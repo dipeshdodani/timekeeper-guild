@@ -1,42 +1,38 @@
-import { useState, useEffect } from "react";
-import { getSimpleDropdownData, getTaskAHT } from "@/utils/dropdownStorage";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { 
-  Play, 
-  Pause, 
-  Square, 
-  Trash2, 
-  Clock,
-  Calendar
-} from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Play, Pause, Square, Trash2, Timer } from 'lucide-react';
+import { getTaskAHT, getDropdownData } from '@/utils/dropdownStorage';
 
 interface TimesheetRow {
   id: string;
   ticketNumber: string;
+  category: string;
+  subCategory: string;
+  taskName: string;
   stubName: string;
   university: string;
   domain: string;
   clientType: string;
-  taskName: string;
-  count: number;
-  completedCount: number;
-  comments: string;
-  receivedDate: string;
   status: string;
-  startTime: Date | null;
-  endTime: Date | null;
+  receivedDate: string;
+  ticketCount: number;
+  caseCount: number;
+  comments: string;
   totalTime: number;
-  isTimerRunning: boolean;
+  isRunning: boolean;
+  isPaused: boolean;
+  startTime: number | null;
 }
 
 interface TimerRowProps {
   row: TimesheetRow;
-  index: number;
   dropdownData: {
     stubs: string[];
     universities: string[];
@@ -50,34 +46,38 @@ interface TimerRowProps {
   onTimeUpdate: (seconds: number) => void;
 }
 
-export const TimerRow = ({ 
+const TimerRow: React.FC<TimerRowProps> = ({ 
   row, 
-  index, 
   dropdownData, 
   onUpdate, 
   onDelete, 
   onTimeUpdate 
-}: TimerRowProps) => {
-  const [currentTime, setCurrentTime] = useState(row.totalTime);
-  const [taskAHT, setTaskAHT] = useState<number | null>(null);
+}) => {
+  const [currentTime, setCurrentTime] = useState(0);
+  const [taskAHT, setTaskAHT] = useState<number>(0);
 
-  // Get AHT for selected task
+  // Update AHT when both category and subcategory are selected
   useEffect(() => {
-    if (row.taskName) {
-      const aht = getTaskAHT(row.taskName);
-      setTaskAHT(aht);
+    if (row.category && row.subCategory) {
+      const taskKey = `${row.category} - ${row.subCategory}`;
+      const aht = getTaskAHT(taskKey);
+      if (aht !== null) {
+        setTaskAHT(aht);
+      } else {
+        setTaskAHT(0); // Default to 0 if no AHT found
+      }
     }
-  }, [row.taskName]);
+  }, [row.category, row.subCategory]);
 
+  // Timer logic
   useEffect(() => {
     let interval: NodeJS.Timeout;
     
-    if (row.isTimerRunning) {
+    if (row.isRunning && !row.isPaused) {
       interval = setInterval(() => {
         setCurrentTime(prev => {
           const newTime = prev + 1;
-          onUpdate(row.id, { totalTime: newTime });
-          onTimeUpdate(newTime);
+          onTimeUpdate(1);
           return newTime;
         });
       }, 1000);
@@ -86,289 +86,354 @@ export const TimerRow = ({
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [row.isTimerRunning, row.id, onUpdate, onTimeUpdate]);
+  }, [row.isRunning, row.isPaused, onTimeUpdate]);
 
   const startTimer = () => {
     onUpdate(row.id, {
-      isTimerRunning: true,
-      startTime: row.startTime || new Date(),
-      status: row.status === "Not Started" ? "WIP" : row.status
+      isRunning: true,
+      isPaused: false,
+      startTime: Date.now()
     });
   };
 
   const pauseTimer = () => {
     onUpdate(row.id, {
-      isTimerRunning: false,
-      endTime: new Date()
+      isRunning: false,
+      isPaused: true,
+      totalTime: row.totalTime + currentTime
     });
+    setCurrentTime(0);
   };
 
   const stopTimer = () => {
     onUpdate(row.id, {
-      isTimerRunning: false,
-      endTime: new Date(),
+      isRunning: false,
+      isPaused: false,
+      totalTime: row.totalTime + currentTime,
       status: "Completed"
     });
+    setCurrentTime(0);
   };
 
   const resetTimer = () => {
     setCurrentTime(0);
     onUpdate(row.id, {
       totalTime: 0,
-      isTimerRunning: false,
-      startTime: null,
-      endTime: null
+      isRunning: false,
+      isPaused: false,
+      startTime: null
     });
   };
 
-  const formatTime = (seconds: number) => {
+  // Helper functions to get categories and subcategories from AHT data
+  const getUniqueCategories = () => {
+    const data = getDropdownData();
+    const categories = [...new Set(data.tasks.map(task => task.category))];
+    return categories.sort();
+  };
+
+  const getSubCategoriesForCategory = (category: string) => {
+    const data = getDropdownData();
+    const subCategories = data.tasks
+      .filter(task => task.category === category)
+      .map(task => task.subCategory);
+    return [...new Set(subCategories)].sort();
+  };
+
+  const formatTime = (seconds: number): string => {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getTotalTimeDisplay = () => {
-    if (row.totalTime > 0) {
-      const hours = Math.floor(row.totalTime / 3600);
-      const minutes = Math.floor((row.totalTime % 3600) / 60);
-      return `${hours}h ${minutes}m`;
-    }
-    return "0h 0m";
+  const getTotalTimeDisplay = (): string => {
+    const totalSeconds = row.totalTime + currentTime;
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    return `${hours}h ${minutes}m`;
   };
 
   const getStatusBadgeVariant = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      "Not Started": "outline",
-      "WIP": "default",
-      "On Hold - Client": "destructive",
-      "On Hold - Dev": "destructive", 
-      "Completed": "secondary"
-    };
-    return variants[status] || "outline";
+    switch (status) {
+      case "Completed": return "default";
+      case "WIP": return "secondary";
+      case "On Hold - Client": return "outline";
+      case "On Hold - Dev": return "outline";
+      default: return "secondary";
+    }
   };
 
-  const getTimerButtonColor = () => {
-    if (row.isTimerRunning) return "timer-active";
-    return "timer-stopped";
+  const getTimerButtonColor = (isRunning: boolean, isPaused: boolean) => {
+    if (isRunning && !isPaused) return "text-red-500";
+    if (isPaused) return "text-yellow-500";
+    return "text-primary";
   };
 
   return (
-    <Card className="shadow-soft border-border">
+    <Card className="mb-4 shadow-soft border-border">
       <CardContent className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <Badge variant="outline" className="text-xs">
-              Task #{index + 1}
-            </Badge>
-            <Badge variant={getStatusBadgeVariant(row.status)}>
-              {row.status}
-            </Badge>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {/* Timer Display */}
-            <div className="flex items-center gap-4">
-              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg font-mono text-lg font-bold border-2 transition-all duration-300 ${
-                row.isTimerRunning 
-                  ? 'bg-timer-active/10 border-timer-active text-timer-active shadow-timer' 
-                  : 'bg-surface border-border text-foreground'
-              }`}>
-                <Clock className="w-4 h-4" />
-                {formatTime(currentTime)}
-              </div>
-              
-              {row.totalTime > 0 && (
-                <div className="text-center">
-                  <div className="text-sm font-semibold text-primary">
-                    {getTotalTimeDisplay()}
-                  </div>
-                  <div className="text-xs text-foreground-muted">Total</div>
+        <div className="space-y-4">
+          {/* Task Info Section */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <Badge variant={getStatusBadgeVariant(row.status)} className="text-xs">
+                {row.status}
+              </Badge>
+              {taskAHT > 0 && (
+                <div className="flex items-center gap-1 text-xs text-foreground-muted">
+                  <Timer className="w-3 h-3" />
+                  <span>AHT: {taskAHT}min</span>
                 </div>
               )}
             </div>
-            
-            {/* Timer Controls */}
-            <div className="flex gap-1">
-              {!row.isTimerRunning ? (
-                <Button
-                  size="sm"
-                  onClick={startTimer}
-                  className="bg-timer-active hover:bg-timer-active/90 text-white"
-                >
-                  <Play className="w-4 h-4" />
-                </Button>
-              ) : (
-                <Button
-                  size="sm"
-                  onClick={pauseTimer}
-                  className="bg-timer-paused hover:bg-timer-paused/90 text-white"
-                >
-                  <Pause className="w-4 h-4" />
-                </Button>
-              )}
-              
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={stopTimer}
-                className="border-timer-stopped hover:bg-timer-stopped/10"
-              >
-                <Square className="w-4 h-4" />
-              </Button>
-              
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onDelete(row.id)}
-                className="border-destructive hover:bg-destructive/10 text-destructive"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
+            <div className="text-right">
+              <div className="text-sm font-mono text-foreground">
+                {formatTime(currentTime)}
+              </div>
+              <div className="text-xs text-foreground-muted">
+                Total: {getTotalTimeDisplay()}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Form Fields */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground-muted">Ticket Number</label>
-            <Input
-              value={row.ticketNumber}
-              onChange={(e) => onUpdate(row.id, { ticketNumber: e.target.value })}
-              placeholder="TKT-001"
-              className="bg-surface border-border"
+          {/* Timer Controls */}
+          <div className="flex justify-center gap-2 mb-4">
+            <Button
+              size="sm"
+              onClick={startTimer}
+              disabled={row.isRunning && !row.isPaused}
+              className="bg-success hover:bg-success/90"
+            >
+              <Play className="w-4 h-4" />
+            </Button>
+            
+            <Button
+              size="sm"
+              onClick={pauseTimer}
+              disabled={!row.isRunning}
+              className="bg-warning hover:bg-warning/90"
+            >
+              <Pause className="w-4 h-4" />
+            </Button>
+            
+            <Button
+              size="sm"
+              onClick={stopTimer}
+              disabled={!row.isRunning && !row.isPaused}
+              variant="outline"
+            >
+              <Square className="w-4 h-4" />
+            </Button>
+            
+            <Button
+              size="sm"
+              onClick={() => onDelete(row.id)}
+              variant="destructive"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Form Fields Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Ticket Number */}
+            <div className="space-y-1">
+              <Label htmlFor="ticketNumber" className="text-xs font-medium text-foreground-muted">Ticket Number</Label>
+              <Input
+                id="ticketNumber"
+                value={row.ticketNumber}
+                onChange={(e) => onUpdate(row.id, { ticketNumber: e.target.value })}
+                placeholder="TKT-001"
+                className="bg-surface border-border h-8 text-xs"
+              />
+            </div>
+
+            {/* Stub Name */}
+            <div className="space-y-1">
+              <Label htmlFor="stubName" className="text-xs font-medium text-foreground-muted">Stub Name</Label>
+              <Select 
+                value={row.stubName || ""} 
+                onValueChange={(value) => onUpdate(row.id, { stubName: value })}
+              >
+                <SelectTrigger className="bg-surface border-border h-8 text-xs">
+                  <SelectValue placeholder="Select stub" />
+                </SelectTrigger>
+                <SelectContent className="bg-surface border-border z-50">
+                  {dropdownData.stubs.map((stub) => (
+                    <SelectItem key={stub} value={stub}>{stub}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* University */}
+            <div className="space-y-1">
+              <Label htmlFor="university" className="text-xs font-medium text-foreground-muted">University</Label>
+              <Select 
+                value={row.university || ""} 
+                onValueChange={(value) => onUpdate(row.id, { university: value })}
+              >
+                <SelectTrigger className="bg-surface border-border h-8 text-xs">
+                  <SelectValue placeholder="Select university" />
+                </SelectTrigger>
+                <SelectContent className="bg-surface border-border z-50">
+                  {dropdownData.universities.map((university) => (
+                    <SelectItem key={university} value={university}>{university}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Domain */}
+            <div className="space-y-1">
+              <Label htmlFor="domain" className="text-xs font-medium text-foreground-muted">Domain</Label>
+              <Select 
+                value={row.domain || ""} 
+                onValueChange={(value) => onUpdate(row.id, { domain: value })}
+              >
+                <SelectTrigger className="bg-surface border-border h-8 text-xs">
+                  <SelectValue placeholder="Select domain" />
+                </SelectTrigger>
+                <SelectContent className="bg-surface border-border z-50">
+                  {dropdownData.domains.map((domain) => (
+                    <SelectItem key={domain} value={domain}>{domain}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Main Category Selection */}
+            <div className="space-y-1">
+              <Label htmlFor="category" className="text-xs font-medium text-foreground-muted">Main Category</Label>
+              <Select 
+                value={row.category || ""} 
+                onValueChange={(value) => onUpdate(row.id, { category: value, subCategory: "", taskName: "" })}
+              >
+                <SelectTrigger className="bg-surface border-border h-8 text-xs">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent className="bg-surface border-border z-50">
+                  {getUniqueCategories().map((category) => (
+                    <SelectItem key={category} value={category}>{category}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Sub Category Selection */}
+            <div className="space-y-1">
+              <Label htmlFor="subCategory" className="text-xs font-medium text-foreground-muted">Sub Category</Label>
+              <Select 
+                value={row.subCategory || ""} 
+                onValueChange={(value) => {
+                  const taskName = row.category ? `${row.category} - ${value}` : value;
+                  onUpdate(row.id, { subCategory: value, taskName });
+                }}
+                disabled={!row.category}
+              >
+                <SelectTrigger className="bg-surface border-border h-8 text-xs">
+                  <SelectValue placeholder="Select sub category" />
+                </SelectTrigger>
+                <SelectContent className="bg-surface border-border z-50">
+                  {getSubCategoriesForCategory(row.category || "").map((subCategory) => (
+                    <SelectItem key={subCategory} value={subCategory}>{subCategory}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Client Type */}
+            <div className="space-y-1">
+              <Label htmlFor="clientType" className="text-xs font-medium text-foreground-muted">Client Type</Label>
+              <Select 
+                value={row.clientType || ""} 
+                onValueChange={(value) => onUpdate(row.id, { clientType: value })}
+              >
+                <SelectTrigger className="bg-surface border-border h-8 text-xs">
+                  <SelectValue placeholder="Select client type" />
+                </SelectTrigger>
+                <SelectContent className="bg-surface border-border z-50">
+                  {dropdownData.clientTypes.map((type) => (
+                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Status */}
+            <div className="space-y-1">
+              <Label htmlFor="status" className="text-xs font-medium text-foreground-muted">Status</Label>
+              <Select 
+                value={row.status || ""} 
+                onValueChange={(value) => onUpdate(row.id, { status: value })}
+              >
+                <SelectTrigger className="bg-surface border-border h-8 text-xs">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent className="bg-surface border-border z-50">
+                  {dropdownData.statuses.map((status) => (
+                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Ticket Count */}
+            <div className="space-y-1">
+              <Label htmlFor="ticketCount" className="text-xs font-medium text-foreground-muted">Ticket Count</Label>
+              <Input
+                id="ticketCount"
+                type="number"
+                value={row.ticketCount || ""}
+                onChange={(e) => onUpdate(row.id, { ticketCount: parseInt(e.target.value) || 0 })}
+                placeholder="0"
+                className="bg-surface border-border h-8 text-xs"
+              />
+            </div>
+
+            {/* Case Count */}
+            <div className="space-y-1">
+              <Label htmlFor="caseCount" className="text-xs font-medium text-foreground-muted">Case Count</Label>
+              <Input
+                id="caseCount"
+                type="number"
+                value={row.caseCount || ""}
+                onChange={(e) => onUpdate(row.id, { caseCount: parseInt(e.target.value) || 0 })}
+                placeholder="0"
+                className="bg-surface border-border h-8 text-xs"
+              />
+            </div>
+
+            {/* Received Date */}
+            <div className="space-y-1">
+              <Label htmlFor="receivedDate" className="text-xs font-medium text-foreground-muted">Received Date</Label>
+              <Input
+                id="receivedDate"
+                type="date"
+                value={row.receivedDate}
+                onChange={(e) => onUpdate(row.id, { receivedDate: e.target.value })}
+                className="bg-surface border-border h-8 text-xs"
+              />
+            </div>
+          </div>
+
+          {/* Comments */}
+          <div className="space-y-1">
+            <Label htmlFor="comments" className="text-xs font-medium text-foreground-muted">Comments</Label>
+            <Textarea
+              id="comments"
+              value={row.comments}
+              onChange={(e) => onUpdate(row.id, { comments: e.target.value })}
+              placeholder="Add any additional notes..."
+              className="bg-surface border-border text-xs resize-none"
+              rows={2}
             />
           </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground-muted">Stub Name</label>
-            <Select value={row.stubName} onValueChange={(value) => onUpdate(row.id, { stubName: value })}>
-              <SelectTrigger className="bg-surface border-border">
-                <SelectValue placeholder="Select stub" />
-              </SelectTrigger>
-              <SelectContent>
-                {dropdownData.stubs.map((stub) => (
-                  <SelectItem key={stub} value={stub}>{stub}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground-muted">University</label>
-            <Select value={row.university} onValueChange={(value) => onUpdate(row.id, { university: value })}>
-              <SelectTrigger className="bg-surface border-border">
-                <SelectValue placeholder="Select university" />
-              </SelectTrigger>
-              <SelectContent>
-                {dropdownData.universities.map((uni) => (
-                  <SelectItem key={uni} value={uni}>{uni}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground-muted">Domain</label>
-            <Select value={row.domain} onValueChange={(value) => onUpdate(row.id, { domain: value })}>
-              <SelectTrigger className="bg-surface border-border">
-                <SelectValue placeholder="Select domain" />
-              </SelectTrigger>
-              <SelectContent>
-                {dropdownData.domains.map((domain) => (
-                  <SelectItem key={domain} value={domain}>{domain}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground-muted">Client Type</label>
-            <Select value={row.clientType} onValueChange={(value) => onUpdate(row.id, { clientType: value })}>
-              <SelectTrigger className="bg-surface border-border">
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                {dropdownData.clientTypes.map((type) => (
-                  <SelectItem key={type} value={type}>{type}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground-muted">Task Name</label>
-            <Select value={row.taskName} onValueChange={(value) => onUpdate(row.id, { taskName: value })}>
-              <SelectTrigger className="bg-surface border-border">
-                <SelectValue placeholder="Select task" />
-              </SelectTrigger>
-              <SelectContent>
-                {dropdownData.tasks.map((task) => (
-                  <SelectItem key={task} value={task}>
-                    <div className="flex justify-between items-center w-full">
-                      <span>{task}</span>
-                      {getTaskAHT(task) && (
-                        <span className="text-xs text-foreground-muted ml-2">
-                          AHT: {getTaskAHT(task)}min
-                        </span>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {taskAHT && (
-              <div className="text-xs text-foreground-muted">
-                Expected AHT: {taskAHT} minutes
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground-muted">Count</label>
-            <Input
-              type="number"
-              value={row.count || ""}
-              onChange={(e) => onUpdate(row.id, { count: parseInt(e.target.value) || 0 })}
-              placeholder="0"
-              className="bg-surface border-border"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground-muted">Completed Count</label>
-            <Input
-              type="number"
-              value={row.completedCount || ""}
-              onChange={(e) => onUpdate(row.id, { completedCount: parseInt(e.target.value) || 0 })}
-              placeholder="0"
-              className="bg-surface border-border"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground-muted">Received Date</label>
-            <Input
-              type="date"
-              value={row.receivedDate}
-              onChange={(e) => onUpdate(row.id, { receivedDate: e.target.value })}
-              className="bg-surface border-border"
-            />
-          </div>
-        </div>
-
-        <div className="mt-4 space-y-2">
-          <label className="text-sm font-medium text-foreground-muted">Comments</label>
-          <Textarea
-            value={row.comments}
-            onChange={(e) => onUpdate(row.id, { comments: e.target.value })}
-            placeholder="Add any additional notes or comments..."
-            className="bg-surface border-border resize-none"
-            rows={2}
-          />
         </div>
       </CardContent>
     </Card>
   );
 };
+
+export default TimerRow;
