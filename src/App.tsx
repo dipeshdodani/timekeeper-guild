@@ -10,6 +10,7 @@ import Reports from "./pages/Reports";
 import Tasks from "./pages/Tasks";
 import TeamManagement from "./pages/TeamManagement";
 import Clients from "./pages/Clients";
+import DropdownManagement from "./pages/DropdownManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/team" element={<TeamManagement />} />
           <Route path="/clients" element={<Clients />} />
+          <Route path="/dropdown-management" element={<DropdownManagement />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

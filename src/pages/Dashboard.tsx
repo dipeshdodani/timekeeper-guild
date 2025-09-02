@@ -13,7 +13,8 @@ import {
   AlertCircle,
   LogOut,
   Plus,
-  FileText
+  FileText,
+  Database
 } from "lucide-react";
 
 const Dashboard = () => {
@@ -101,6 +102,14 @@ const Dashboard = () => {
       description: "Manage team members and settings", 
       icon: Users,
       action: () => navigate("/team"),
+      variant: "secondary" as const
+    });
+    
+    quickActions.push({
+      title: "Dropdown Management",
+      description: "Manage dropdown lists and data", 
+      icon: Database,
+      action: () => navigate("/dropdown-management"),
       variant: "secondary" as const
     });
   }

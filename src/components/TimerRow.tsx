@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getSimpleDropdownData, getTaskAHT } from "@/utils/dropdownStorage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -58,6 +59,15 @@ export const TimerRow = ({
   onTimeUpdate 
 }: TimerRowProps) => {
   const [currentTime, setCurrentTime] = useState(row.totalTime);
+  const [taskAHT, setTaskAHT] = useState<number | null>(null);
+
+  // Get AHT for selected task
+  useEffect(() => {
+    if (row.taskName) {
+      const aht = getTaskAHT(row.taskName);
+      setTaskAHT(aht);
+    }
+  }, [row.taskName]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -295,10 +305,24 @@ export const TimerRow = ({
               </SelectTrigger>
               <SelectContent>
                 {dropdownData.tasks.map((task) => (
-                  <SelectItem key={task} value={task}>{task}</SelectItem>
+                  <SelectItem key={task} value={task}>
+                    <div className="flex justify-between items-center w-full">
+                      <span>{task}</span>
+                      {getTaskAHT(task) && (
+                        <span className="text-xs text-foreground-muted ml-2">
+                          AHT: {getTaskAHT(task)}min
+                        </span>
+                      )}
+                    </div>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {taskAHT && (
+              <div className="text-xs text-foreground-muted">
+                Expected AHT: {taskAHT} minutes
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">

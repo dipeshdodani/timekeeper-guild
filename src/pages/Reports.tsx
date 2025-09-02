@@ -6,13 +6,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, BarChart3, FileText, Calendar, Download, Filter } from "lucide-react";
+import { DateRangePicker } from "@/components/DateRangePicker";
+import { PerformanceFilters, FilterPeriod } from "@/components/PerformanceFilters";
 import { useToast } from "@/hooks/use-toast";
 
 const Reports = () => {
   const [userRole, setUserRole] = useState<string>("");
   const [dateRange, setDateRange] = useState("this-month");
+  const [customStartDate, setCustomStartDate] = useState<Date>();
+  const [customEndDate, setCustomEndDate] = useState<Date>();
   const [selectedTeam, setSelectedTeam] = useState("all");
   const [selectedEmployee, setSelectedEmployee] = useState("all");
+  const [performanceFilter, setPerformanceFilter] = useState<{
+    period: FilterPeriod;
+    startDate: Date;
+    endDate: Date;
+  }>({
+    period: "this-week",
+    startDate: new Date(),
+    endDate: new Date()
+  });
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -39,10 +52,27 @@ const Reports = () => {
     ]
   };
 
+  const handleDateRangeChange = (value: string, startDate?: Date, endDate?: Date) => {
+    setDateRange(value);
+    if (startDate && endDate) {
+      setCustomStartDate(startDate);
+      setCustomEndDate(endDate);
+    }
+  };
+
+  const handlePerformanceFilterChange = (period: FilterPeriod, startDate: Date, endDate: Date) => {
+    setPerformanceFilter({ period, startDate, endDate });
+  };
+
   const exportReport = (reportType: string) => {
     const timestamp = new Date().toISOString().split('T')[0];
     let csvContent = "";
     let filename = "";
+    
+    // Add date range info to filename
+    const dateRangeStr = dateRange === "custom" && customStartDate && customEndDate 
+      ? `${customStartDate.toISOString().split('T')[0]}_to_${customEndDate.toISOString().split('T')[0]}`
+      : dateRange;
 
     switch (reportType) {
       case "time-summary":
@@ -53,21 +83,21 @@ const Reports = () => {
           ["Average Daily Hours", sampleReportData.timeSummary.avgDailyHours],
           ["Utilization Rate", `${sampleReportData.timeSummary.utilizationRate}%`]
         ].map(row => row.join(",")).join("\n");
-        filename = `time_summary_${timestamp}.csv`;
+        filename = `time_summary_${dateRangeStr}_${timestamp}.csv`;
         break;
       case "task-breakdown":
         csvContent = [
           ["Task Name", "Hours", "Percentage"],
           ...sampleReportData.tasks.map(task => [task.name, task.hours, `${task.percentage}%`])
         ].map(row => row.join(",")).join("\n");
-        filename = `task_breakdown_${timestamp}.csv`;
+        filename = `task_breakdown_${dateRangeStr}_${timestamp}.csv`;
         break;
       case "employee-summary":
         csvContent = [
           ["Employee ID", "Name", "Total Hours", "Tasks Completed"],
           ...sampleReportData.employees.map(emp => [emp.id, emp.name, emp.totalHours, emp.tasks])
         ].map(row => row.join(",")).join("\n");
-        filename = `employee_summary_${timestamp}.csv`;
+        filename = `employee_summary_${dateRangeStr}_${timestamp}.csv`;
         break;
     }
 
@@ -80,7 +110,7 @@ const Reports = () => {
     
     toast({
       title: "Export Complete",
-      description: `${reportType} report exported successfully`
+      description: `${reportType} report exported for ${dateRange === "custom" ? "custom date range" : dateRange}`
     });
   };
 
@@ -121,21 +151,12 @@ const Reports = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="dateRange">Date Range</Label>
-                <Select value={dateRange} onValueChange={setDateRange}>
-                  <SelectTrigger className="bg-surface border-border">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="this-week">This Week</SelectItem>
-                    <SelectItem value="this-month">This Month</SelectItem>
-                    <SelectItem value="last-month">Last Month</SelectItem>
-                    <SelectItem value="this-quarter">This Quarter</SelectItem>
-                    <SelectItem value="custom">Custom Range</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="space-y-4">
+                <DateRangePicker
+                  value={dateRange}
+                  onChange={handleDateRangeChange}
+                />
               </div>
               <div>
                 <Label htmlFor="team">Team</Label>
@@ -305,7 +326,12 @@ const Reports = () => {
         {/* Employee Performance Table */}
         <Card className="shadow-soft border-border">
           <CardHeader>
-            <CardTitle>Employee Performance Summary</CardTitle>
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <CardTitle>Employee Performance Summary</CardTitle>
+              <div className="lg:w-80">
+                <PerformanceFilters onFilterChange={handlePerformanceFilterChange} />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
