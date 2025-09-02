@@ -12,8 +12,6 @@ export interface University {
 
 export interface Domain {
   name: string;
-  description: string;
-  category: string;
 }
 
 export interface ClientType {
@@ -24,8 +22,6 @@ export interface ClientType {
 
 export interface StubName {
   name: string;
-  description: string;
-  team: string;
 }
 
 export interface DropdownData {
@@ -57,14 +53,10 @@ export const DROPDOWN_TEMPLATES = {
     { field: 'Domain', example: 'Computer Science' }
   ],
   domains: [
-    { field: 'Name', example: 'Computer Science' },
-    { field: 'Description', example: 'Software and technology related tasks' },
-    { field: 'Category', example: 'Technical' }
+    { field: 'Domain', example: 'Computer Science' }
   ],
   stubs: [
-    { field: 'Name', example: 'Student Support' },
-    { field: 'Description', example: 'General student assistance' },
-    { field: 'Team', example: 'Support Team Alpha' }
+    { field: 'Stub_Name', example: 'Student Support' }
   ],
   tasks: [
     { field: 'Category', example: 'Customer Support' },

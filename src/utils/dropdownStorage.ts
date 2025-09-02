@@ -11,10 +11,10 @@ const DEFAULT_DROPDOWN_DATA: DropdownData = {
     { name: "University of California", domain: "Business Administration" }
   ],
   domains: [
-    { name: "Computer Science", description: "Software and technology related tasks", category: "Technical" },
-    { name: "Business Administration", description: "Business and management tasks", category: "Business" },
-    { name: "Engineering", description: "Engineering and technical support", category: "Technical" },
-    { name: "Customer Service", description: "Customer support and service", category: "Support" }
+    { name: "Computer Science" },
+    { name: "Business Administration" },
+    { name: "Engineering" },
+    { name: "Customer Service" }
   ],
   clientTypes: [
     { name: "Premium", description: "High priority premium client", priority: "High" },
@@ -23,10 +23,10 @@ const DEFAULT_DROPDOWN_DATA: DropdownData = {
     { name: "Enterprise", description: "Large enterprise client", priority: "Critical" }
   ],
   stubs: [
-    { name: "Student Support", description: "General student assistance", team: "Support Team Alpha" },
-    { name: "Academic Services", description: "Academic related services", team: "Academic Team" },
-    { name: "Technical Support", description: "Technical assistance", team: "Tech Team" },
-    { name: "Administrative", description: "Administrative tasks", team: "Admin Team" }
+    { name: "Student Support" },
+    { name: "Academic Services" },
+    { name: "Technical Support" },
+    { name: "Administrative" }
   ],
   tasks: [
     { category: "Customer Support", subCategory: "Phone Support", aht: 15 },

@@ -20,6 +20,7 @@ interface Task {
   estimatedTime: number;
   priority: "low" | "medium" | "high";
   status: "active" | "inactive";
+  type: "direct" | "indirect";
   createdBy: string;
   createdAt: string;
 }
@@ -55,6 +56,7 @@ const Tasks = () => {
         estimatedTime: 15,
         priority: "medium",
         status: "active",
+        type: "direct",
         createdBy: "admin@company.com",
         createdAt: "2024-01-15"
       },
@@ -67,6 +69,7 @@ const Tasks = () => {
         estimatedTime: 45,
         priority: "high",
         status: "active",
+        type: "indirect",
         createdBy: "sme@company.com",
         createdAt: "2024-01-10"
       },
@@ -79,6 +82,7 @@ const Tasks = () => {
         estimatedTime: 60,
         priority: "high",
         status: "active",
+        type: "direct",
         createdBy: "admin@company.com",
         createdAt: "2024-01-12"
       },
@@ -91,6 +95,7 @@ const Tasks = () => {
         estimatedTime: 30,
         priority: "medium",
         status: "active",
+        type: "indirect",
         createdBy: "sme@company.com",
         createdAt: "2024-01-08"
       },
@@ -103,6 +108,7 @@ const Tasks = () => {
         estimatedTime: 90,
         priority: "high",
         status: "active",
+        type: "direct",
         createdBy: "admin@company.com",
         createdAt: "2024-01-14"
       }
@@ -130,6 +136,7 @@ const Tasks = () => {
       estimatedTime: 30,
       priority: "medium",
       status: "active",
+      type: "direct",
       createdBy: localStorage.getItem("userEmail") || "",
       createdAt: new Date().toISOString().split('T')[0]
     };
@@ -237,6 +244,7 @@ const Tasks = () => {
           estimatedTime: parseInt(row["Estimated Time (mins)"]) || 30,
           priority: (row["Priority"] as "low" | "medium" | "high") || "medium",
           status: "active",
+          type: (row["Type"] as "direct" | "indirect") || "direct",
           createdBy: localStorage.getItem("userEmail") || "",
           createdAt: new Date().toISOString().split('T')[0]
         };
@@ -257,10 +265,10 @@ const Tasks = () => {
 
   const handleExport = () => {
     const csvContent = [
-      ["Category", "Sub Category", "Description", "Team", "Estimated Time (mins)", "Priority", "Status", "Created By", "Created Date"],
+      ["Category", "Sub Category", "Description", "Team", "Estimated Time (mins)", "Priority", "Status", "Type", "Created By", "Created Date"],
       ...tasks.map(task => [
         task.category, task.subCategory, task.description, task.team, task.estimatedTime.toString(), 
-        task.priority, task.status, task.createdBy, task.createdAt
+        task.priority, task.status, task.type, task.createdBy, task.createdAt
       ])
     ].map(row => row.join(",")).join("\n");
 
@@ -281,7 +289,8 @@ const Tasks = () => {
       return isNaN(num) || num <= 0 ? "Must be a positive number" : null;
     },
     "Priority": (value: string) => !["low", "medium", "high"].includes(value) ? "Priority must be low, medium, or high" : null,
-    "Team": (value: string) => !teams.includes(value) ? `Team must be one of: ${teams.join(", ")}` : null
+    "Team": (value: string) => !teams.includes(value) ? `Team must be one of: ${teams.join(", ")}` : null,
+    "Type": (value: string) => !["direct", "indirect"].includes(value) ? "Type must be direct or indirect" : null
   };
 
   const sampleData = [
@@ -291,7 +300,8 @@ const Tasks = () => {
       "Description": "Handle customer inquiries and provide support",
       "Team": "Support",
       "Estimated Time (mins)": "15",
-      "Priority": "medium"
+      "Priority": "medium",
+      "Type": "direct"
     }
   ];
 
@@ -300,7 +310,7 @@ const Tasks = () => {
       <div className="min-h-screen bg-gradient-to-br from-background via-surface to-surface-elevated p-6">
         <BulkUpload
           title="Bulk Upload Tasks"
-          templateColumns={["Category", "Sub Category", "Description", "Team", "Estimated Time (mins)", "Priority"]}
+          templateColumns={["Category", "Sub Category", "Description", "Team", "Estimated Time (mins)", "Priority", "Type"]}
           sampleData={sampleData}
           onUpload={handleBulkUploadData}
           onClose={() => setShowBulkUpload(false)}
@@ -421,6 +431,7 @@ const Tasks = () => {
                     <th className="p-3 text-left font-semibold">Est. Time</th>
                     <th className="p-3 text-left font-semibold">Priority</th>
                     <th className="p-3 text-left font-semibold">Status</th>
+                    <th className="p-3 text-left font-semibold">Type</th>
                     <th className="p-3 text-left font-semibold">Created By</th>
                     <th className="p-3 text-left font-semibold">Created Date</th>
                     {canManageTasks && <th className="p-3 text-left font-semibold">Actions</th>}
@@ -532,6 +543,26 @@ const Tasks = () => {
                             {task.status}
                           </span>
                         </div>
+                      </td>
+                      <td className="p-3">
+                        {editingTask === task.id ? (
+                          <Select 
+                            value={editingData.type || task.type}
+                            onValueChange={(value: "direct" | "indirect") => setEditingData(prev => ({ ...prev, type: value }))}
+                          >
+                            <SelectTrigger className="bg-surface border-border h-8 w-24">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-surface border-border z-50">
+                              <SelectItem value="direct">Direct</SelectItem>
+                              <SelectItem value="indirect">Indirect</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Badge variant={task.type === 'direct' ? 'default' : 'secondary'}>
+                            {task.type}
+                          </Badge>
+                        )}
                       </td>
                       <td className="p-3 text-foreground-muted text-sm">
                         {task.createdBy.split('@')[0]}

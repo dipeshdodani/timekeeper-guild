@@ -153,15 +153,8 @@ const Timesheet = () => {
     return `${hours}h ${minutes}m`;
   };
 
-  // Mock dropdown data
-  const dropdownData = {
-    stubs: ["Development", "Testing", "Analysis", "Documentation"],
-    universities: ["University A", "University B", "University C"],
-    domains: ["Healthcare", "Finance", "Education", "Technology"],
-    clientTypes: ["New", "BAU"],
-    tasks: ["Code Review", "Bug Fix", "Feature Development", "Testing"],
-    statuses: ["Not Started", "WIP", "On Hold - Client", "On Hold - Dev", "Completed"]
-  };
+  // Get dropdown data from uploaded lists
+  const dropdownData = getSimpleDropdownData();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-surface to-surface-elevated">

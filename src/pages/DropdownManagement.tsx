@@ -82,18 +82,14 @@ const DropdownManagement = () => {
           
         case 'domains':
           processedData = data.map(row => ({
-            name: row.Name,
-            description: row.Description,
-            category: row.Category
+            name: row.Domain || row.domain || row.Name || row.name || ''
           }));
           updateDomains(processedData as DomainType[]);
           break;
           
         case 'stubs':
           processedData = data.map(row => ({
-            name: row.Name,
-            description: row.Description,
-            team: row.Team
+            name: row.Stub_Name || row['Stub Name'] || row.Name || row.name || ''
           }));
           updateStubs(processedData as StubNameType[]);
           break;
@@ -140,16 +136,16 @@ const DropdownManagement = () => {
         
       case 'domains':
         csvContent = [
-          ["Name", "Description", "Category"],
-          ...dropdownData.domains.map(d => [d.name, d.description, d.category])
+          ["Domain"],
+          ...dropdownData.domains.map(d => [d.name])
         ].map(row => row.join(",")).join("\n");
         filename = "domains_export.csv";
         break;
         
       case 'stubs':
         csvContent = [
-          ["Name", "Description", "Team"],
-          ...dropdownData.stubs.map(s => [s.name, s.description, s.team])
+          ["Stub_Name"],
+          ...dropdownData.stubs.map(s => [s.name])
         ].map(row => row.join(",")).join("\n");
         filename = "stubs_export.csv";
         break;
@@ -217,18 +213,18 @@ const DropdownManagement = () => {
     {
       id: 'domains' as DropdownType,
       title: 'Domains',
-      description: 'Manage domain categories and descriptions',
+      description: 'Manage domain categories',
       icon: Globe,
       data: dropdownData.domains,
-      columns: ['Name', 'Description', 'Category']
+      columns: ['Domain']
     },
     {
       id: 'stubs' as DropdownType,
       title: 'Stub Names',
-      description: 'Manage stub names and team assignments',
+      description: 'Manage stub names',
       icon: FileText,
       data: dropdownData.stubs,
-      columns: ['Name', 'Description', 'Team']
+      columns: ['Stub Name']
     },
     {
       id: 'tasks' as DropdownType,
@@ -362,18 +358,10 @@ const DropdownManagement = () => {
                                   </>
                                 )}
                                 {section.id === 'domains' && (
-                                  <>
-                                    <td className="p-3">{item.name}</td>
-                                    <td className="p-3">{item.description}</td>
-                                    <td className="p-3">{item.category}</td>
-                                  </>
+                                  <td className="p-3">{item.name}</td>
                                 )}
                                 {section.id === 'stubs' && (
-                                  <>
-                                    <td className="p-3">{item.name}</td>
-                                    <td className="p-3">{item.description}</td>
-                                    <td className="p-3">{item.team}</td>
-                                  </>
+                                  <td className="p-3">{item.name}</td>
                                 )}
                                 {section.id === 'tasks' && (
                                   <>
