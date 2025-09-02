@@ -2,39 +2,73 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+/* Professional Timesheet Tracker Design System */
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Brand Colors - Professional Corporate Theme */
+    --primary: 214 84% 16%;        /* Deep corporate blue */
+    --primary-foreground: 0 0% 98%;
+    --primary-light: 214 50% 35%;   /* Lighter blue for accents */
+    --primary-glow: 214 84% 55%;    /* Glowing blue for active states */
+    
+    /* Backgrounds */
+    --background: 220 20% 97%;      /* Soft white with blue tint */
+    --surface: 0 0% 100%;           /* Pure white for cards */
+    --surface-elevated: 220 30% 98%; /* Slightly elevated surface */
+    
+    /* Text Colors */
+    --foreground: 220 25% 15%;      /* Dark blue-gray for text */
+    --foreground-muted: 220 15% 45%; /* Muted text */
+    --foreground-subtle: 220 10% 65%; /* Subtle text */
+    
+    /* Semantic Colors */
+    --success: 142 76% 36%;         /* Professional green */
+    --success-foreground: 0 0% 98%;
+    --warning: 38 92% 50%;          /* Amber warning */
+    --warning-foreground: 0 0% 98%;
+    --destructive: 0 84% 60%;       /* Error red */
+    --destructive-foreground: 0 0% 98%;
+    
+    /* Timer & Status Colors */
+    --timer-active: 142 76% 36%;    /* Green for active timer */
+    --timer-paused: 38 92% 50%;     /* Amber for paused */
+    --timer-stopped: 220 15% 45%;   /* Gray for stopped */
+    
+    /* UI Elements */
+    --border: 220 13% 88%;          /* Soft borders */
+    --border-strong: 220 25% 75%;   /* Stronger borders */
+    --input: 220 13% 91%;           /* Input backgrounds */
+    --ring: 214 84% 55%;            /* Focus rings */
+    
+    /* Cards & Surfaces */
+    --card: var(--surface);
+    --card-foreground: var(--foreground);
+    --popover: var(--surface);
+    --popover-foreground: var(--foreground);
+    
+    /* Interactive States */
+    --secondary: 220 15% 93%;       /* Secondary button background */
+    --secondary-foreground: var(--foreground);
+    --muted: 220 10% 95%;           /* Muted areas */
+    --muted-foreground: var(--foreground-muted);
+    --accent: 214 50% 92%;          /* Accent backgrounds */
+    --accent-foreground: var(--primary);
+    
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-light)));
+    --gradient-surface: linear-gradient(180deg, hsl(var(--surface)), hsl(var(--surface-elevated)));
+    --gradient-hero: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary-glow)) 100%);
+    
+    /* Shadows */
+    --shadow-soft: 0 2px 8px hsl(var(--primary) / 0.08);
+    --shadow-medium: 0 4px 16px hsl(var(--primary) / 0.12);
+    --shadow-strong: 0 8px 32px hsl(var(--primary) / 0.16);
+    --shadow-timer: 0 0 20px hsl(var(--timer-active) / 0.3);
+    
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 
     --radius: 0.5rem;
 
