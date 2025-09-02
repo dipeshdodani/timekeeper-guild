@@ -58,8 +58,17 @@ const Timesheet = () => {
     }
     setUserRole(role);
     
-    // Initialize with one empty row
-    addNewRow();
+    // Load saved timesheet data from localStorage
+    const savedData = localStorage.getItem(`timesheet-${new Date().toDateString()}`);
+    if (savedData) {
+      const parsed = JSON.parse(savedData);
+      setRows(parsed.rows || []);
+      setTotalLoggedTime(parsed.totalLoggedTime || 0);
+      setBreakTime(parsed.breakTime || 0);
+    } else {
+      // Initialize with one empty row if no saved data
+      addNewRow();
+    }
   }, [navigate]);
 
   const addNewRow = () => {
@@ -85,9 +94,24 @@ const Timesheet = () => {
   };
 
   const updateRow = (id: string, updates: Partial<TimesheetRow>) => {
-    setRows(prev => prev.map(row => 
-      row.id === id ? { ...row, ...updates } : row
-    ));
+    setRows(prev => {
+      const updated = prev.map(row => 
+        row.id === id ? { ...row, ...updates } : row
+      );
+      // Auto-save to localStorage
+      saveToLocalStorage(updated);
+      return updated;
+    });
+  };
+
+  const saveToLocalStorage = (updatedRows = rows) => {
+    const data = {
+      rows: updatedRows,
+      totalLoggedTime,
+      breakTime,
+      lastSaved: new Date().toISOString()
+    };
+    localStorage.setItem(`timesheet-${new Date().toDateString()}`, JSON.stringify(data));
   };
 
   const deleteRow = (id: string) => {
@@ -224,6 +248,8 @@ const Timesheet = () => {
                     // Update total logged time
                     const totalTime = rows.reduce((acc, r) => acc + r.totalTime, 0);
                     setTotalLoggedTime(totalTime);
+                    // Auto-save when time updates
+                    saveToLocalStorage();
                   }}
                 />
               ))}

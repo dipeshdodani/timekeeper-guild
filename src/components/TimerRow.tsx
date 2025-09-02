@@ -118,6 +118,15 @@ export const TimerRow = ({
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const getTotalTimeDisplay = () => {
+    if (row.totalTime > 0) {
+      const hours = Math.floor(row.totalTime / 3600);
+      const minutes = Math.floor((row.totalTime % 3600) / 60);
+      return `${hours}h ${minutes}m`;
+    }
+    return "0h 0m";
+  };
+
   const getStatusBadgeVariant = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
       "Not Started": "outline",
@@ -149,13 +158,24 @@ export const TimerRow = ({
           
           <div className="flex items-center gap-2">
             {/* Timer Display */}
-            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg font-mono text-lg font-bold border-2 transition-all duration-300 ${
-              row.isTimerRunning 
-                ? 'bg-timer-active/10 border-timer-active text-timer-active shadow-timer' 
-                : 'bg-surface border-border text-foreground'
-            }`}>
-              <Clock className="w-4 h-4" />
-              {formatTime(currentTime)}
+            <div className="flex items-center gap-4">
+              <div className={`flex items-center gap-2 px-3 py-2 rounded-lg font-mono text-lg font-bold border-2 transition-all duration-300 ${
+                row.isTimerRunning 
+                  ? 'bg-timer-active/10 border-timer-active text-timer-active shadow-timer' 
+                  : 'bg-surface border-border text-foreground'
+              }`}>
+                <Clock className="w-4 h-4" />
+                {formatTime(currentTime)}
+              </div>
+              
+              {row.totalTime > 0 && (
+                <div className="text-center">
+                  <div className="text-sm font-semibold text-primary">
+                    {getTotalTimeDisplay()}
+                  </div>
+                  <div className="text-xs text-foreground-muted">Total</div>
+                </div>
+              )}
             </div>
             
             {/* Timer Controls */}
