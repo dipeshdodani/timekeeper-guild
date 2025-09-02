@@ -9,9 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Plus, Search, Edit, Trash2, Users, Upload, Download, Save, X, ToggleLeft, ToggleRight } from "lucide-react";
+import { ArrowLeft, Plus, Search, Edit, Trash2, Users, Upload, Download, Save, X, ToggleLeft, ToggleRight, Key } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import BulkUpload from "@/components/BulkUpload";
+import PasswordResetModal from "@/components/PasswordResetModal";
 
 interface Employee {
   id: string;
@@ -23,6 +24,7 @@ interface Employee {
   status: "active" | "inactive";
   joinDate: string;
   lastActive: string;
+  password?: string;
 }
 
 const TeamManagement = () => {
@@ -50,6 +52,8 @@ const TeamManagement = () => {
   const [editingEmployee, setEditingEmployee] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<Partial<Employee>>({});
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [selectedEmployeeForPassword, setSelectedEmployeeForPassword] = useState<Employee | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -72,7 +76,8 @@ const TeamManagement = () => {
         team: "Support",
         status: "active",
         joinDate: "2024-01-15",
-        lastActive: "2024-01-20"
+        lastActive: "2024-01-20",
+        password: "TempPass123!"
       },
       {
         id: "2",
@@ -83,7 +88,8 @@ const TeamManagement = () => {
         team: "CI",
         status: "active",
         joinDate: "2023-12-10",
-        lastActive: "2024-01-19"
+        lastActive: "2024-01-19",
+        password: "SecurePass456@"
       },
       {
         id: "3",
@@ -94,7 +100,8 @@ const TeamManagement = () => {
         team: "Migration",
         status: "active",
         joinDate: "2023-11-01",
-        lastActive: "2024-01-20"
+        lastActive: "2024-01-20",
+        password: "AdminPass789#"
       },
       {
         id: "4",
@@ -105,7 +112,8 @@ const TeamManagement = () => {
         team: "Config", 
         status: "inactive",
         joinDate: "2024-01-05",
-        lastActive: "2024-01-18"
+        lastActive: "2024-01-18",
+        password: "ConfigPass321$"
       },
       {
         id: "5",
@@ -116,7 +124,8 @@ const TeamManagement = () => {
         team: "Exxat One",
         status: "active",
         joinDate: "2024-01-12",
-        lastActive: "2024-01-20"
+        lastActive: "2024-01-20",
+        password: "ExxatPass654%"
       }
     ];
     setEmployees(sampleEmployees);
@@ -283,6 +292,7 @@ const TeamManagement = () => {
           email: row["Email"] || "",
           role: (row["Role"] as "team-member" | "sme" | "admin") || "team-member",
           team: row["Team"] || "",
+          password: row["Password"] || "",
           status: "active",
           joinDate: new Date().toISOString().split('T')[0],
           lastActive: new Date().toISOString().split('T')[0]
@@ -341,12 +351,34 @@ const TeamManagement = () => {
     return roleMap[role as keyof typeof roleMap] || role;
   };
 
+  const handlePasswordReset = (employeeId: string, newPassword: string) => {
+    setEmployees(prev => prev.map(emp => 
+      emp.id === employeeId 
+        ? { ...emp, password: newPassword }
+        : emp
+    ));
+  };
+
+  const openPasswordModal = (employee: Employee) => {
+    setSelectedEmployeeForPassword(employee);
+    setShowPasswordModal(true);
+  };
+
   const bulkUploadValidation = {
     "Employee ID": (value: string) => 
       employees.some(emp => emp.employeeId === value) ? "Employee ID already exists" : null,
     "Email": (value: string) => !value.includes("@") ? "Invalid email format" : null,
     "Role": (value: string) => !["team-member", "sme", "admin"].includes(value) ? "Role must be team-member, sme, or admin" : null,
-    "Team": (value: string) => !teams.includes(value) ? `Team must be one of: ${teams.join(", ")}` : null
+    "Team": (value: string) => !teams.includes(value) ? `Team must be one of: ${teams.join(", ")}` : null,
+    "Password": (value: string) => {
+      if (value.length < 8) {
+        return "Password must be at least 8 characters long";
+      }
+      if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(value)) {
+        return "Password must contain uppercase, lowercase, number, and special character";
+      }
+      return null;
+    }
   };
 
   const sampleData = [
@@ -370,6 +402,27 @@ const TeamManagement = () => {
           onUpload={handleBulkUploadData}
           onClose={() => setShowBulkUpload(false)}
           validationRules={bulkUploadValidation}
+          formatInfo={{
+            description: "Upload team members with their login credentials. All fields are required.",
+            requirements: [
+              "Unique Employee ID for each member", 
+              "Valid email address format",
+              "Password must be at least 8 characters",
+              "Password must contain uppercase, lowercase, number, and special character"
+            ],
+            validValues: {
+              'Role': ['team-member', 'sme', 'admin'],
+              'Team': teams
+            },
+            example: {
+              'Employee ID': 'EMP006',
+              'Name': 'Alex Johnson', 
+              'Email': 'alex.johnson@company.com',
+              'Role': 'team-member',
+              'Team': 'Support',
+              'Password': 'SecurePass123!'
+            }
+          }}
         />
       </div>
     );
@@ -714,21 +767,32 @@ const TeamManagement = () => {
                             <X className="w-4 h-4" />
                           </Button>
                         </>
-                      ) : (
+                       ) : (
                         <>
                           <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEditEmployee(employee)}
                             className="w-8 h-8"
+                            title="Edit Employee"
                           >
                             <Edit className="w-4 h-4" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => openPasswordModal(employee)}
+                            className="w-8 h-8"
+                            title="Reset Password"
+                          >
+                            <Key className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => toggleEmployeeStatus(employee.id)}
                             className="w-8 h-8"
+                            title="Toggle Status"
                           >
                             {employee.status === "active" ? (
                               <ToggleRight className="w-4 h-4 text-success" />
@@ -741,6 +805,7 @@ const TeamManagement = () => {
                             size="icon"
                             onClick={() => deleteEmployee(employee.id)}
                             className="w-8 h-8 hover:bg-destructive/10 hover:text-destructive"
+                            title="Delete Employee"
                           >
                             <Trash2 className="w-4 h-4" />
                           </Button>
@@ -766,6 +831,13 @@ const TeamManagement = () => {
             </p>
           </Card>
         )}
+
+        <PasswordResetModal
+          open={showPasswordModal}
+          onClose={() => setShowPasswordModal(false)}
+          employee={selectedEmployeeForPassword}
+          onPasswordReset={handlePasswordReset}
+        />
       </div>
     </div>
   );

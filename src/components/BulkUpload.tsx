@@ -29,6 +29,12 @@ interface BulkUploadProps {
   onUpload: (data: Record<string, string>[]) => Promise<BulkUploadResult>;
   onClose: () => void;
   validationRules?: Record<string, (value: string, row: Record<string, string>) => string | null>;
+  formatInfo?: {
+    description: string;
+    requirements: string[];
+    validValues?: Record<string, string[]>;
+    example?: Record<string, string>;
+  };
 }
 
 const BulkUpload = ({ 
@@ -37,7 +43,8 @@ const BulkUpload = ({
   sampleData = [], 
   onUpload, 
   onClose, 
-  validationRules = {} 
+  validationRules = {},
+  formatInfo
 }: BulkUploadProps) => {
   const [file, setFile] = useState<File | null>(null);
   const [csvData, setCsvData] = useState<Record<string, string>[]>([]);
@@ -210,6 +217,72 @@ const BulkUpload = ({
       <CardContent className="space-y-6">
         {!previewMode ? (
           <>
+            {/* Format Information */}
+            {formatInfo && (
+              <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border">
+                <h3 className="font-semibold text-lg">CSV Format Requirements</h3>
+                <p className="text-sm text-muted-foreground">{formatInfo.description}</p>
+                
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-medium mb-2">Required Columns</h4>
+                    <ul className="text-sm space-y-1">
+                      {templateColumns.map(col => (
+                        <li key={col} className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-primary rounded-full"></div>
+                          <code className="bg-muted px-1 rounded text-xs">{col}</code>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  <div>
+                    <h4 className="font-medium mb-2">Requirements</h4>
+                    <ul className="text-sm space-y-1">
+                      {formatInfo.requirements.map((req, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <div className="w-2 h-2 bg-orange-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                          <span>{req}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {formatInfo.validValues && (
+                  <div>
+                    <h4 className="font-medium mb-2">Valid Values</h4>
+                    <div className="grid gap-2">
+                      {Object.entries(formatInfo.validValues).map(([field, values]) => (
+                        <div key={field} className="flex items-center gap-2 text-sm">
+                          <strong>{field}:</strong>
+                          <div className="flex gap-1 flex-wrap">
+                            {values.map(value => (
+                              <code key={value} className="bg-muted px-1 rounded text-xs">{value}</code>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {formatInfo.example && (
+                  <div>
+                    <h4 className="font-medium mb-2">Example Data</h4>
+                    <div className="bg-background p-2 rounded border text-xs font-mono">
+                      {Object.entries(formatInfo.example).map(([key, value], idx) => (
+                        <span key={key}>
+                          {key}: {value}
+                          {idx < Object.keys(formatInfo.example!).length - 1 && ', '}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Template Download */}
             <div className="flex justify-between items-center p-4 bg-accent rounded-lg">
               <div>
