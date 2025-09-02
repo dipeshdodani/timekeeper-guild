@@ -16,6 +16,7 @@ interface TimesheetRow {
   ticketNumber: string;
   category: string;
   subCategory: string;
+  activityType: string;
   taskName: string;
   stubName: string;
   university: string;
@@ -24,12 +25,7 @@ interface TimesheetRow {
   status: string;
   receivedDate: string;
   ticketCount: number;
-  caseCount: number;
   comments: string;
-  totalTime: number;
-  isRunning: boolean;
-  isPaused: boolean;
-  startTime: number | null;
 }
 
 interface TimerRowProps {
@@ -44,17 +40,14 @@ interface TimerRowProps {
   };
   onUpdate: (id: string, updates: Partial<TimesheetRow>) => void;
   onDelete: (id: string) => void;
-  onTimeUpdate: (seconds: number) => void;
 }
 
 const TimerRow: React.FC<TimerRowProps> = ({ 
   row, 
   dropdownData, 
   onUpdate, 
-  onDelete, 
-  onTimeUpdate 
+  onDelete
 }) => {
-  const [currentTime, setCurrentTime] = useState(0);
   const [taskAHT, setTaskAHT] = useState<number>(0);
 
   // Update AHT when both category and subcategory are selected
@@ -69,62 +62,6 @@ const TimerRow: React.FC<TimerRowProps> = ({
       }
     }
   }, [row.category, row.subCategory]);
-
-  // Timer logic
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    
-    if (row.isRunning && !row.isPaused) {
-      interval = setInterval(() => {
-        setCurrentTime(prev => {
-          const newTime = prev + 1;
-          onTimeUpdate(1);
-          return newTime;
-        });
-      }, 1000);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [row.isRunning, row.isPaused, onTimeUpdate]);
-
-  const startTimer = () => {
-    onUpdate(row.id, {
-      isRunning: true,
-      isPaused: false,
-      startTime: Date.now()
-    });
-  };
-
-  const pauseTimer = () => {
-    onUpdate(row.id, {
-      isRunning: false,
-      isPaused: true,
-      totalTime: row.totalTime + currentTime
-    });
-    setCurrentTime(0);
-  };
-
-  const stopTimer = () => {
-    onUpdate(row.id, {
-      isRunning: false,
-      isPaused: false,
-      totalTime: row.totalTime + currentTime,
-      status: "Completed"
-    });
-    setCurrentTime(0);
-  };
-
-  const resetTimer = () => {
-    setCurrentTime(0);
-    onUpdate(row.id, {
-      totalTime: 0,
-      isRunning: false,
-      isPaused: false,
-      startTime: null
-    });
-  };
 
   // Helper functions to get categories and subcategories from AHT data
   const getUniqueCategories = () => {
@@ -141,20 +78,6 @@ const TimerRow: React.FC<TimerRowProps> = ({
     return [...new Set(subCategories)].sort();
   };
 
-  const formatTime = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const getTotalTimeDisplay = (): string => {
-    const totalSeconds = row.totalTime + currentTime;
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    return `${hours}h ${minutes}m`;
-  };
-
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case "Completed": return "default";
@@ -165,79 +88,35 @@ const TimerRow: React.FC<TimerRowProps> = ({
     }
   };
 
-  const getTimerButtonColor = (isRunning: boolean, isPaused: boolean) => {
-    if (isRunning && !isPaused) return "text-red-500";
-    if (isPaused) return "text-yellow-500";
-    return "text-primary";
-  };
-
   return (
-    <Card className="mb-2 shadow-sm border-border">
-      <CardContent className="p-3">
-        <div className="space-y-3">
-          {/* Compact Task Info Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Badge variant={getStatusBadgeVariant(row.status)} className="text-xs py-0 px-2 h-5">
-                {row.status}
-              </Badge>
-              {taskAHT > 0 && (
-                <div className="flex items-center gap-1 text-xs text-foreground-muted">
-                  <Timer className="w-3 h-3" />
-                  <span>AHT: {taskAHT}min</span>
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <div className="text-sm font-mono text-foreground">
-                  {formatTime(currentTime)}
-                </div>
-                <div className="text-xs text-foreground-muted">
-                  Total: {getTotalTimeDisplay()}
-                </div>
+    <Card className="shadow-sm border-border">
+        <CardContent className="p-3">
+          <div className="space-y-3">
+            {/* Row Header with Status and Delete */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Badge variant={getStatusBadgeVariant(row.status)} className="text-xs py-0 px-2 h-5">
+                  {row.status}
+                </Badge>
+                {taskAHT > 0 && (
+                  <div className="flex items-center gap-1 text-xs text-foreground-muted">
+                    <Timer className="w-3 h-3" />
+                    <span>AHT: {taskAHT}min</span>
+                  </div>
+                )}
               </div>
-              {/* Compact Timer Controls */}
-              <div className="flex gap-1">
-                <Button
-                  size="sm"
-                  onClick={startTimer}
-                  disabled={row.isRunning && !row.isPaused}
-                  className="bg-success hover:bg-success/90 h-7 w-7 p-0"
-                >
-                  <Play className="w-3 h-3" />
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={pauseTimer}
-                  disabled={!row.isRunning}
-                  className="bg-warning hover:bg-warning/90 h-7 w-7 p-0"
-                >
-                  <Pause className="w-3 h-3" />
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={stopTimer}
-                  disabled={!row.isRunning && !row.isPaused}
-                  variant="outline"
-                  className="h-7 w-7 p-0"
-                >
-                  <Square className="w-3 h-3" />
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => onDelete(row.id)}
-                  variant="destructive"
-                  className="h-7 w-7 p-0"
-                >
-                  <Trash2 className="w-3 h-3" />
-                </Button>
-              </div>
+              <Button
+                size="sm"
+                onClick={() => onDelete(row.id)}
+                variant="destructive"
+                className="h-7 w-7 p-0"
+              >
+                <Trash2 className="w-3 h-3" />
+              </Button>
             </div>
-          </div>
 
-          {/* Compact Form Fields Grid - Excel-like Row */}
-          <div className="grid grid-cols-6 lg:grid-cols-11 gap-2 text-xs">
+            {/* Form Fields Grid - Excel-like Row */}
+            <div className="grid grid-cols-6 lg:grid-cols-11 gap-2 text-xs">
             {/* Ticket Number */}
             <div className="col-span-1">
               <Input
@@ -312,6 +191,22 @@ const TimerRow: React.FC<TimerRowProps> = ({
               />
             </div>
 
+            {/* Activity Type - NEW/BAU Only */}
+            <div className="col-span-1">
+              <Select 
+                value={row.activityType || ""} 
+                onValueChange={(value) => onUpdate(row.id, { activityType: value })}
+              >
+                <SelectTrigger className="h-7 text-xs border-border">
+                  <SelectValue placeholder="NEW/BAU" />
+                </SelectTrigger>
+                <SelectContent className="z-50">
+                  <SelectItem value="NEW" className="text-xs">NEW</SelectItem>
+                  <SelectItem value="BAU" className="text-xs">BAU</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Client Type - Compact */}
             <div className="col-span-1">
               <SearchableSelect
@@ -372,21 +267,21 @@ const TimerRow: React.FC<TimerRowProps> = ({
                 className="h-7 text-xs border-border"
               />
             </div>
-          </div>
+            </div>
 
-          {/* Comments - Full Width */}
-          <div>
-            <Textarea
-              value={row.comments}
-              onChange={(e) => onUpdate(row.id, { comments: e.target.value })}
-              placeholder="Comments..."
-              className="text-xs resize-none border-border"
-              rows={1}
-            />
+            {/* Comments - Full Width */}
+            <div>
+              <Textarea
+                value={row.comments}
+                onChange={(e) => onUpdate(row.id, { comments: e.target.value })}
+                placeholder="Comments..."
+                className="text-xs resize-none border-border"
+                rows={1}
+              />
+            </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
   );
 };
 

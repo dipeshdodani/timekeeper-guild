@@ -14,6 +14,7 @@ interface TimesheetRow {
   ticketNumber: string;
   category: string;
   subCategory: string;
+  activityType: string;
   taskName: string;
   stubName: string;
   university: string;
@@ -22,12 +23,7 @@ interface TimesheetRow {
   status: string;
   receivedDate: string;
   ticketCount: number;
-  caseCount: number;
   comments: string;
-  totalTime: number;
-  isRunning: boolean;
-  isPaused: boolean;
-  startTime: number | null;
 }
 
 const Timesheet = () => {
@@ -35,10 +31,6 @@ const Timesheet = () => {
   const { toast } = useToast();
   const [userRole, setUserRole] = useState<string>("");
   const [rows, setRows] = useState<TimesheetRow[]>([]);
-  const [totalLoggedTime, setTotalLoggedTime] = useState(0);
-  const [breakTime, setBreakTime] = useState(0);
-  const [isOnBreak, setIsOnBreak] = useState(false);
-  const [breakStartTime, setBreakStartTime] = useState<number | null>(null);
 
   useEffect(() => {
     const role = localStorage.getItem("userRole");
@@ -53,8 +45,6 @@ const Timesheet = () => {
     if (savedData) {
       const parsed = JSON.parse(savedData);
       setRows(parsed.rows || []);
-      setTotalLoggedTime(parsed.totalLoggedTime || 0);
-      setBreakTime(parsed.breakTime || 0);
     } else {
       // Initialize with one empty row
       addNewRow();
@@ -67,6 +57,7 @@ const Timesheet = () => {
       ticketNumber: "",
       category: "",
       subCategory: "",
+      activityType: "",
       taskName: "",
       stubName: "",
       university: "",
@@ -75,12 +66,7 @@ const Timesheet = () => {
       status: "Not Started",
       receivedDate: "",
       ticketCount: 0,
-      caseCount: 0,
-      comments: "",
-      totalTime: 0,
-      isRunning: false,
-      isPaused: false,
-      startTime: null
+      comments: ""
     };
     setRows(prev => [...prev, newRow]);
   };
@@ -95,8 +81,6 @@ const Timesheet = () => {
   const saveToLocalStorage = () => {
     const dataToSave = {
       rows,
-      totalLoggedTime,
-      breakTime,
       lastSaved: new Date().toISOString()
     };
     localStorage.setItem(`timesheet-${new Date().toDateString()}`, JSON.stringify(dataToSave));
@@ -107,41 +91,13 @@ const Timesheet = () => {
     saveToLocalStorage();
   };
 
-  const toggleBreak = () => {
-    if (isOnBreak) {
-      // End break
-      const breakDuration = breakStartTime ? Date.now() - breakStartTime : 0;
-      setBreakTime(prev => prev + Math.floor(breakDuration / 1000));
-      setBreakStartTime(null);
-      setIsOnBreak(false);
-    } else {
-      // Start break - pause all running timers
-      setRows(prev => prev.map(row => 
-        row.isRunning ? { ...row, isRunning: false, isPaused: true } : row
-      ));
-      setBreakStartTime(Date.now());
-      setIsOnBreak(true);
-    }
-    saveToLocalStorage();
-  };
-
   const handleSubmit = () => {
     toast({
       title: "Timesheet Submitted",
       description: "Your timesheet has been submitted successfully.",
     });
-    console.log("Submitting timesheet data:", { rows, totalLoggedTime, breakTime });
+    console.log("Submitting timesheet data:", rows);
     navigate("/dashboard");
-  };
-
-  const handleTimeUpdate = (seconds: number) => {
-    setTotalLoggedTime(prev => prev + seconds);
-  };
-
-  const formatTime = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    return `${hours}h ${minutes}m`;
   };
 
   // Get dropdown data from uploaded lists
@@ -170,17 +126,6 @@ const Timesheet = () => {
             </div>
             
             <div className="flex items-center space-x-4">
-              {/* Break Controls */}
-              <Button
-                variant={isOnBreak ? "destructive" : "outline"}
-                size="sm"
-                onClick={toggleBreak}
-                className="flex items-center gap-2"
-              >
-                <Coffee className="w-4 h-4" />
-                {isOnBreak ? "End Break" : "Take Break"}
-              </Button>
-              
               {/* Submit Button */}
               <Button
                 onClick={handleSubmit}
@@ -196,80 +141,55 @@ const Timesheet = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Progress Tracker */}
-        <div className="mb-8">
-          <AvailabilityTracker 
-            totalLoggedTime={totalLoggedTime}
-            breakTime={breakTime}
-            isOnBreak={isOnBreak}
-            targetHours={8}
-          />
-        </div>
-
         {/* Timesheet Rows */}
-        <Card className="shadow-soft border-border">
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-lg font-semibold text-foreground">
-                Time Entries
-              </CardTitle>
-              <Button
-                onClick={addNewRow}
-                size="sm"
-                className="bg-primary hover:bg-primary/90"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Entry
-              </Button>
+        <div className="space-y-4">
+          <CardTitle className="text-lg font-semibold text-foreground">
+            Timesheet Entries
+          </CardTitle>
+          
+          {/* Column Headers */}
+          <div className="grid grid-cols-6 lg:grid-cols-11 gap-2 text-xs font-medium text-foreground-muted bg-muted/50 p-2 rounded-md border">
+            <div className="col-span-1">Ticket #</div>
+            <div className="col-span-1 lg:col-span-2">Stub Name</div>
+            <div className="col-span-1 lg:col-span-2">University</div>
+            <div className="col-span-1">Domain</div>
+            <div className="col-span-1 lg:col-span-2">Main Category</div>
+            <div className="col-span-1 lg:col-span-2">Sub Category</div>
+            <div className="col-span-1">Client Type</div>
+            <div className="col-span-1">Status</div>
+            <div className="col-span-1">Data Count</div>
+            <div className="col-span-1">AHT / Unit</div>
+            <div className="col-span-1">Received Date</div>
+          </div>
+          
+          {rows.map((row) => (
+            <TimerRow
+              key={row.id}
+              row={row}
+              dropdownData={dropdownData}
+              onUpdate={updateRow}
+              onDelete={deleteRow}
+            />
+          ))}
+          
+          {rows.length === 0 && (
+            <div className="text-center py-8 text-foreground-muted">
+              <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>No time entries yet. Click "Add Entry" to get started.</p>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {rows.map((row) => (
-              <TimerRow
-                key={row.id}
-                row={row}
-                dropdownData={dropdownData}
-                onUpdate={updateRow}
-                onDelete={deleteRow}
-                onTimeUpdate={handleTimeUpdate}
-              />
-            ))}
-            
-            {rows.length === 0 && (
-              <div className="text-center py-8 text-foreground-muted">
-                <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No time entries yet. Click "Add Entry" to get started.</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+          )}
 
-        {/* Summary */}
-        <div className="mt-8 flex justify-end">
-          <Card className="shadow-soft border-border">
-            <CardContent className="p-6">
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-foreground-muted">Total Logged Time:</span>
-                  <Badge variant="secondary" className="text-sm">
-                    {formatTime(totalLoggedTime)}
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-foreground-muted">Break Time:</span>
-                  <Badge variant="outline" className="text-sm">
-                    {formatTime(breakTime)}
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-center font-semibold">
-                  <span className="text-foreground">Net Work Time:</span>
-                  <Badge variant="default" className="text-sm">
-                    {formatTime(Math.max(0, totalLoggedTime - breakTime))}
-                  </Badge>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Add Entry Button at Bottom */}
+          <div className="flex justify-center pt-4">
+            <Button
+              onClick={addNewRow}
+              size="sm"
+              className="bg-primary hover:bg-primary/90"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Entry
+            </Button>
+          </div>
         </div>
       </div>
     </div>
