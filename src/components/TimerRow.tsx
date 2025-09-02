@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Play, Pause, Square, Trash2, Timer } from 'lucide-react';
 import { getTaskAHT, getDropdownData } from '@/utils/dropdownStorage';
+import { useGlobalTimer } from '@/hooks/useGlobalTimer';
 
 interface TimesheetRow {
   id: string;
@@ -61,6 +62,9 @@ const TimerRow: React.FC<TimerRowProps> = ({
   isOnGlobalBreak
 }) => {
   const [taskAHT, setTaskAHT] = useState<number>(0);
+  
+  // Use global timer to get accurate timer state
+  const { getCurrentTime: getGlobalCurrentTime, getTimer } = useGlobalTimer();
 
   // Update AHT when both category and subcategory are selected
   useEffect(() => {
@@ -108,13 +112,15 @@ const TimerRow: React.FC<TimerRowProps> = ({
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Calculate current time for display
+  // Calculate current time for display using global timer state
   const getCurrentTime = () => {
-    if (row.isActive && row.startTime) {
-      const elapsed = Math.floor((Date.now() - row.startTime) / 1000);
-      return row.totalTime + elapsed;
-    }
-    return row.totalTime;
+    const globalTime = getGlobalCurrentTime(row.id);
+    const timer = getTimer(row.id);
+    
+    // Debug logging
+    console.log(`TimerRow ${row.id}: globalTime=${globalTime}, timer:`, timer, `row.isActive=${row.isActive}`);
+    
+    return globalTime;
   };
 
   return (

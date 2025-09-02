@@ -26,7 +26,35 @@ export const useGlobalTimer = () => {
     if (savedState) {
       try {
         const parsed = JSON.parse(savedState);
-        setTimerState(parsed);
+        console.log('Loading timer state from localStorage:', parsed);
+        
+        // CRITICAL: Stop all active timers when loading the hook
+        // This prevents phantom timers from previous sessions
+        const now = Date.now();
+        const cleanedTimers = parsed.timers.map((timer: TimerState) => {
+          if (timer.isActive && timer.startTime) {
+            const elapsed = Math.floor((now - timer.startTime) / 1000);
+            console.log(`Stopping phantom timer ${timer.id}, elapsed: ${elapsed}s`);
+            return { 
+              ...timer, 
+              isActive: false, 
+              startTime: null, 
+              totalTime: timer.totalTime + elapsed 
+            };
+          }
+          return { ...timer, isActive: false, startTime: null };
+        });
+        
+        const cleanedState = { ...parsed, timers: cleanedTimers };
+        setTimerState(cleanedState);
+        
+        // Save the cleaned state back to localStorage
+        try {
+          localStorage.setItem(GLOBAL_TIMER_KEY, JSON.stringify(cleanedState));
+          console.log('Saved cleaned timer state to localStorage');
+        } catch (error) {
+          console.error('Error saving cleaned timer state:', error);
+        }
       } catch (error) {
         console.error('Error loading timer state:', error);
       }

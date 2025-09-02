@@ -63,6 +63,9 @@ const Timesheet = () => {
     }
     setUserRole(role);
 
+    // Debug: Check timer state before loading
+    console.log("Loading timesheet page, checking timer state...");
+    
     // Load saved timesheet data
     const savedData = localStorage.getItem(`timesheet-${new Date().toDateString()}`);
     if (savedData) {
@@ -73,15 +76,22 @@ const Timesheet = () => {
       // Clean up orphaned timers that don't match current row IDs
       const validRowIds = rows.map((row: TimesheetRow) => row.id);
       cleanupOrphanedTimers(validRowIds);
+      
+      // CRITICAL: Stop all active timers when loading the page
+      // This ensures no phantom timers continue running from previous sessions
+      console.log("Stopping all active timers on page load...");
+      stopAllTimers();
     } else {
       // Initialize with one empty row
       addNewRow();
+      // Also stop any phantom timers for fresh start
+      stopAllTimers();
     }
 
     // Setup timer cleanup on app close
     const cleanup = setupTimerCleanup();
     return cleanup;
-  }, [navigate]);
+  }, [navigate, stopAllTimers, cleanupOrphanedTimers]);
 
   const addNewRow = () => {
     const newRow: TimesheetRow = {
