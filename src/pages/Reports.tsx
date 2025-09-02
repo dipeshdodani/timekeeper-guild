@@ -2,11 +2,87 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BarChart3, FileText, Calendar } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, BarChart3, FileText, Calendar, Download, Filter } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const Reports = () => {
   const [userRole, setUserRole] = useState<string>("");
+  const [dateRange, setDateRange] = useState("this-month");
+  const [selectedTeam, setSelectedTeam] = useState("all");
+  const [selectedEmployee, setSelectedEmployee] = useState("all");
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // Sample data for reports
+  const sampleReportData = {
+    timeSummary: {
+      totalHours: 168.5,
+      billableHours: 145.2,
+      avgDailyHours: 8.4,
+      utilizationRate: 86.2
+    },
+    tasks: [
+      { name: "Customer Support", hours: 45.5, percentage: 27 },
+      { name: "Code Review", hours: 38.2, percentage: 23 },
+      { name: "Documentation", hours: 32.8, percentage: 19 },
+      { name: "Training", hours: 28.0, percentage: 17 },
+      { name: "Meetings", hours: 24.0, percentage: 14 }
+    ],
+    employees: [
+      { id: "EMP001", name: "John Smith", totalHours: 42.5, tasks: 18 },
+      { id: "EMP002", name: "Sarah Johnson", totalHours: 38.2, tasks: 15 },
+      { id: "EMP003", name: "Mike Wilson", totalHours: 45.8, tasks: 22 },
+      { id: "EMP004", name: "Lisa Chen", totalHours: 42.0, tasks: 16 }
+    ]
+  };
+
+  const exportReport = (reportType: string) => {
+    const timestamp = new Date().toISOString().split('T')[0];
+    let csvContent = "";
+    let filename = "";
+
+    switch (reportType) {
+      case "time-summary":
+        csvContent = [
+          ["Metric", "Value"],
+          ["Total Hours", sampleReportData.timeSummary.totalHours],
+          ["Billable Hours", sampleReportData.timeSummary.billableHours],
+          ["Average Daily Hours", sampleReportData.timeSummary.avgDailyHours],
+          ["Utilization Rate", `${sampleReportData.timeSummary.utilizationRate}%`]
+        ].map(row => row.join(",")).join("\n");
+        filename = `time_summary_${timestamp}.csv`;
+        break;
+      case "task-breakdown":
+        csvContent = [
+          ["Task Name", "Hours", "Percentage"],
+          ...sampleReportData.tasks.map(task => [task.name, task.hours, `${task.percentage}%`])
+        ].map(row => row.join(",")).join("\n");
+        filename = `task_breakdown_${timestamp}.csv`;
+        break;
+      case "employee-summary":
+        csvContent = [
+          ["Employee ID", "Name", "Total Hours", "Tasks Completed"],
+          ...sampleReportData.employees.map(emp => [emp.id, emp.name, emp.totalHours, emp.tasks])
+        ].map(row => row.join(",")).join("\n");
+        filename = `employee_summary_${timestamp}.csv`;
+        break;
+    }
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    
+    toast({
+      title: "Export Complete",
+      description: `${reportType} report exported successfully`
+    });
+  };
 
   useEffect(() => {
     const role = localStorage.getItem("userRole");
@@ -30,14 +106,72 @@ const Reports = () => {
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-3xl font-bold text-foreground">Reports & Analytics</h1>
             <p className="text-foreground-muted">Generate and view timesheet reports</p>
           </div>
         </div>
 
+        {/* Filters */}
+        <Card className="mb-8 shadow-soft border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="w-5 h-5" />
+              Report Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="dateRange">Date Range</Label>
+                <Select value={dateRange} onValueChange={setDateRange}>
+                  <SelectTrigger className="bg-surface border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="this-week">This Week</SelectItem>
+                    <SelectItem value="this-month">This Month</SelectItem>
+                    <SelectItem value="last-month">Last Month</SelectItem>
+                    <SelectItem value="this-quarter">This Quarter</SelectItem>
+                    <SelectItem value="custom">Custom Range</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="team">Team</Label>
+                <Select value={selectedTeam} onValueChange={setSelectedTeam}>
+                  <SelectTrigger className="bg-surface border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Teams</SelectItem>
+                    <SelectItem value="support-alpha">Support Team Alpha</SelectItem>
+                    <SelectItem value="support-beta">Support Team Beta</SelectItem>
+                    <SelectItem value="development">Development Team</SelectItem>
+                    <SelectItem value="qa">QA Team</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="employee">Employee</Label>
+                <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                  <SelectTrigger className="bg-surface border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Employees</SelectItem>
+                    {sampleReportData.employees.map(emp => (
+                      <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Reports Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <Card className="shadow-soft border-border hover:shadow-medium transition-all duration-300">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -50,9 +184,14 @@ const Reports = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="outline">
-                Generate Report
+            <CardContent className="space-y-2">
+              <Button 
+                className="w-full" 
+                variant="outline"
+                onClick={() => exportReport("time-summary")}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
               </Button>
             </CardContent>
           </Card>
@@ -69,9 +208,14 @@ const Reports = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="outline">
-                Generate Report
+            <CardContent className="space-y-2">
+              <Button 
+                className="w-full" 
+                variant="outline"
+                onClick={() => exportReport("task-breakdown")}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
               </Button>
             </CardContent>
           </Card>
@@ -83,38 +227,133 @@ const Reports = () => {
                   <Calendar className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg">Attendance Report</CardTitle>
-                  <CardDescription>Employee attendance and availability</CardDescription>
+                  <CardTitle className="text-lg">Employee Summary</CardTitle>
+                  <CardDescription>Individual employee performance data</CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <Button className="w-full" variant="outline">
-                Generate Report
+            <CardContent className="space-y-2">
+              <Button 
+                className="w-full" 
+                variant="outline"
+                onClick={() => exportReport("employee-summary")}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
               </Button>
             </CardContent>
           </Card>
         </div>
+
+        {/* Detailed Reports */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Time Summary Card */}
+          <Card className="shadow-soft border-border">
+            <CardHeader>
+              <CardTitle>Time Summary - {dateRange}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-foreground-muted">Total Hours:</span>
+                  <span className="font-semibold">{sampleReportData.timeSummary.totalHours}h</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-foreground-muted">Billable Hours:</span>
+                  <span className="font-semibold">{sampleReportData.timeSummary.billableHours}h</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-foreground-muted">Avg Daily Hours:</span>
+                  <span className="font-semibold">{sampleReportData.timeSummary.avgDailyHours}h</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-foreground-muted">Utilization Rate:</span>
+                  <span className="font-semibold text-success">{sampleReportData.timeSummary.utilizationRate}%</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Task Breakdown */}
+          <Card className="shadow-soft border-border">
+            <CardHeader>
+              <CardTitle>Task Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {sampleReportData.tasks.map((task, index) => (
+                  <div key={index} className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-foreground">{task.name}</span>
+                        <span className="text-foreground-muted">{task.hours}h</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div 
+                          className="bg-primary h-2 rounded-full" 
+                          style={{ width: `${task.percentage}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Employee Performance Table */}
+        <Card className="shadow-soft border-border">
+          <CardHeader>
+            <CardTitle>Employee Performance Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left py-2">Employee ID</th>
+                    <th className="text-left py-2">Name</th>
+                    <th className="text-left py-2">Total Hours</th>
+                    <th className="text-left py-2">Tasks Completed</th>
+                    <th className="text-left py-2">Avg Hours/Day</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sampleReportData.employees.map((employee, index) => (
+                    <tr key={index} className="border-b border-border">
+                      <td className="py-2">{employee.id}</td>
+                      <td className="py-2">{employee.name}</td>
+                      <td className="py-2">{employee.totalHours}h</td>
+                      <td className="py-2">{employee.tasks}</td>
+                      <td className="py-2">{(employee.totalHours / 5).toFixed(1)}h</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Quick Stats */}
         <div className="mt-8">
           <h2 className="text-xl font-semibold text-foreground mb-4">Quick Statistics</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="p-4 bg-surface border-border">
-              <div className="text-2xl font-bold text-primary">42h</div>
-              <div className="text-sm text-foreground-muted">This Week</div>
+              <div className="text-2xl font-bold text-primary">{sampleReportData.timeSummary.totalHours}h</div>
+              <div className="text-sm text-foreground-muted">Total Hours</div>
             </Card>
             <Card className="p-4 bg-surface border-border">
-              <div className="text-2xl font-bold text-primary">168h</div>
-              <div className="text-sm text-foreground-muted">This Month</div>
+              <div className="text-2xl font-bold text-primary">{sampleReportData.timeSummary.billableHours}h</div>
+              <div className="text-sm text-foreground-muted">Billable Hours</div>
             </Card>
             <Card className="p-4 bg-surface border-border">
-              <div className="text-2xl font-bold text-primary">85%</div>
+              <div className="text-2xl font-bold text-primary">{sampleReportData.timeSummary.utilizationRate}%</div>
               <div className="text-sm text-foreground-muted">Utilization</div>
             </Card>
             <Card className="p-4 bg-surface border-border">
-              <div className="text-2xl font-bold text-primary">12</div>
-              <div className="text-sm text-foreground-muted">Active Projects</div>
+              <div className="text-2xl font-bold text-primary">{sampleReportData.employees.length}</div>
+              <div className="text-sm text-foreground-muted">Active Employees</div>
             </Card>
           </div>
         </div>
