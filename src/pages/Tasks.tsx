@@ -64,7 +64,26 @@ const Tasks = () => {
       setColumns(JSON.parse(savedColumns));
     }
     
-    // Load sample tasks with updated categories
+    // Load tasks from localStorage, or use sample data if none exists
+    const TASKS_STORAGE_KEY = "taskManagementData";
+    const savedTasks = localStorage.getItem(TASKS_STORAGE_KEY);
+    
+    if (savedTasks) {
+      try {
+        const parsedTasks = JSON.parse(savedTasks);
+        setTasks(parsedTasks);
+      } catch (error) {
+        console.error("Error parsing saved tasks:", error);
+        // Fallback to sample data if parsing fails
+        loadSampleTasks();
+      }
+    } else {
+      // Load sample data only if no saved data exists
+      loadSampleTasks();
+    }
+  }, [navigate]);
+
+  const loadSampleTasks = () => {
     const sampleTasks: Task[] = [
       {
         id: "1",
@@ -143,7 +162,18 @@ const Tasks = () => {
       }
     ];
     setTasks(sampleTasks);
-  }, [navigate]);
+    saveTasksToStorage(sampleTasks);
+  };
+
+  // Save tasks to localStorage
+  const saveTasksToStorage = (taskList: Task[]) => {
+    const TASKS_STORAGE_KEY = "taskManagementData";
+    try {
+      localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(taskList));
+    } catch (error) {
+      console.error("Error saving tasks to localStorage:", error);
+    }
+  };
 
   const canManageTasks = userRole === "sme" || userRole === "admin" || userRole === "super-user";
 
@@ -171,7 +201,9 @@ const Tasks = () => {
       createdAt: new Date().toISOString().split('T')[0]
     };
 
-    setTasks(prev => [...prev, newTask]);
+    const updatedTasks = [...tasks, newTask];
+    setTasks(updatedTasks);
+    saveTasksToStorage(updatedTasks);
     setEditingTask(newTask.id);
     setEditingData(newTask);
   };
@@ -190,6 +222,7 @@ const Tasks = () => {
         : task
     );
     setTasks(updatedTasks);
+    saveTasksToStorage(updatedTasks);
     syncTasksToDropdownStorage(updatedTasks);
     
     setEditingTask(null);
@@ -207,16 +240,20 @@ const Tasks = () => {
   };
 
   const toggleTaskStatus = (taskId: string) => {
-    setTasks(prev => prev.map(task => 
+    const updatedTasks = tasks.map(task => 
       task.id === taskId 
-        ? { ...task, status: task.status === "active" ? "inactive" : "active" }
+        ? { ...task, status: (task.status === "active" ? "inactive" : "active") as "active" | "inactive" }
         : task
-    ));
+    );
+    setTasks(updatedTasks);
+    saveTasksToStorage(updatedTasks);
+    syncTasksToDropdownStorage(updatedTasks);
   };
 
   const deleteTask = (taskId: string) => {
     const updatedTasks = tasks.filter(task => task.id !== taskId);
     setTasks(updatedTasks);
+    saveTasksToStorage(updatedTasks);
     syncTasksToDropdownStorage(updatedTasks);
     toast({
       title: "Task Deleted",
@@ -229,6 +266,7 @@ const Tasks = () => {
     
     const updatedTasks = tasks.filter(task => !selectedTasks.includes(task.id));
     setTasks(updatedTasks);
+    saveTasksToStorage(updatedTasks);
     syncTasksToDropdownStorage(updatedTasks);
     setSelectedTasks([]);
     
@@ -403,8 +441,10 @@ const Tasks = () => {
       }
     });
 
-    setTasks(prev => [...prev, ...successful]);
-    syncTasksToDropdownStorage([...tasks, ...successful]);
+    const updatedTasks = [...tasks, ...successful];
+    setTasks(updatedTasks);
+    saveTasksToStorage(updatedTasks);
+    syncTasksToDropdownStorage(updatedTasks);
     
     return {
       successful: successful.length,
