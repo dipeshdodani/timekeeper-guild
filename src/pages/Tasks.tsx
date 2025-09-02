@@ -10,17 +10,19 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Plus, Search, Edit, Trash2, CheckCircle, Clock, AlertTriangle, Save, X, Upload, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import BulkUpload from "@/components/BulkUpload";
+import { ColumnManager, ColumnManagerTrigger, ColumnConfig } from "@/components/ColumnManager";
 
 interface Task {
   id: string;
   category: string;
   subCategory: string;
-  description: string;
   team: string;
-  estimatedTime: number;
-  priority: "low" | "medium" | "high";
   status: "active" | "inactive";
   type: "direct" | "indirect";
+  // Backend-only fields (not displayed in UI)
+  description?: string;
+  estimatedTime?: number;
+  priority?: "low" | "medium" | "high";
   createdBy: string;
   createdAt: string;
 }
@@ -34,6 +36,14 @@ const Tasks = () => {
   const [editingData, setEditingData] = useState<Partial<Task>>({});
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [showColumnManager, setShowColumnManager] = useState(false);
+  const [columns, setColumns] = useState<ColumnConfig[]>([
+    { key: "category", label: "Category", visible: true },
+    { key: "subCategory", label: "Sub Category", visible: true },
+    { key: "team", label: "Team", visible: true },
+    { key: "status", label: "Status", visible: true },
+    { key: "type", label: "Type", visible: true },
+  ]);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -45,18 +55,25 @@ const Tasks = () => {
     }
     setUserRole(role);
     
+    // Load column preferences from localStorage
+    const savedColumns = localStorage.getItem("taskColumns");
+    if (savedColumns) {
+      setColumns(JSON.parse(savedColumns));
+    }
+    
     // Load sample tasks with updated categories
     const sampleTasks: Task[] = [
       {
         id: "1",
         category: "Customer Support",
         subCategory: "Phone Support",
-        description: "Handle customer inquiries and provide support",
         team: "Support",
-        estimatedTime: 15,
-        priority: "medium",
         status: "active",
         type: "direct",
+        // Backend fields
+        description: "Handle customer inquiries and provide support",
+        estimatedTime: 15,
+        priority: "medium",
         createdBy: "admin@company.com",
         createdAt: "2024-01-15"
       },
@@ -64,12 +81,13 @@ const Tasks = () => {
         id: "2", 
         category: "CI Operations",
         subCategory: "Pipeline Configuration",
-        description: "Set up and maintain continuous integration pipelines",
-        team: "CI",
-        estimatedTime: 45,
-        priority: "high",
+        team: "All Teams",
         status: "active",
         type: "indirect",
+        // Backend fields
+        description: "Set up and maintain continuous integration pipelines",
+        estimatedTime: 45,
+        priority: "high",
         createdBy: "sme@company.com",
         createdAt: "2024-01-10"
       },
@@ -77,12 +95,13 @@ const Tasks = () => {
         id: "3",
         category: "Database Management",
         subCategory: "Migration Scripts",
-        description: "Create and execute database migration procedures",
         team: "Migration",
-        estimatedTime: 60,
-        priority: "high",
         status: "active",
         type: "direct",
+        // Backend fields
+        description: "Create and execute database migration procedures",
+        estimatedTime: 60,
+        priority: "high",
         createdBy: "admin@company.com",
         createdAt: "2024-01-12"
       },
@@ -90,12 +109,13 @@ const Tasks = () => {
         id: "4",
         category: "System Configuration",
         subCategory: "Environment Setup",
-        description: "Configure system environments and settings",
-        team: "Config",
-        estimatedTime: 30,
-        priority: "medium",
+        team: "All Teams",
         status: "active",
         type: "indirect",
+        // Backend fields
+        description: "Configure system environments and settings",
+        estimatedTime: 30,
+        priority: "medium",
         createdBy: "sme@company.com",
         createdAt: "2024-01-08"
       },
@@ -103,12 +123,13 @@ const Tasks = () => {
         id: "5",
         category: "Platform Integration",
         subCategory: "Exxat One",
-        description: "Integrate with Exxat One platform systems",
         team: "Exxat One",
-        estimatedTime: 90,
-        priority: "high",
         status: "active",
         type: "direct",
+        // Backend fields
+        description: "Integrate with Exxat One platform systems",
+        estimatedTime: 90,
+        priority: "high",
         createdBy: "admin@company.com",
         createdAt: "2024-01-14"
       }
@@ -120,9 +141,8 @@ const Tasks = () => {
 
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         task.subCategory.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         task.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesTeam = filterTeam === "all" || task.team === filterTeam;
+                         task.subCategory.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesTeam = filterTeam === "all" || task.team === filterTeam || task.team === "All Teams";
     return matchesSearch && matchesTeam;
   });
 
@@ -131,12 +151,13 @@ const Tasks = () => {
       id: Date.now().toString(),
       category: "New Category",
       subCategory: "New Sub Category",
-      description: "Task description",
       team: "Support",
-      estimatedTime: 30,
-      priority: "medium",
       status: "active",
       type: "direct",
+      // Backend fields
+      description: "Task description",
+      estimatedTime: 30,
+      priority: "medium",
       createdBy: localStorage.getItem("userEmail") || "",
       createdAt: new Date().toISOString().split('T')[0]
     };
@@ -227,7 +248,90 @@ const Tasks = () => {
     return variants[priority as keyof typeof variants] || "default";
   };
 
-  const teams = ["Support", "CI", "Migration", "Config", "Exxat One"];
+  const teams = ["Support", "CI", "Migration", "Config", "Exxat One", "All Teams"];
+  
+  const handleColumnsChange = (newColumns: ColumnConfig[]) => {
+    setColumns(newColumns);
+    localStorage.setItem("taskColumns", JSON.stringify(newColumns));
+  };
+
+  const renderCell = (task: Task, columnKey: string) => {
+    switch (columnKey) {
+      case "category":
+        return editingTask === task.id ? (
+          <Input
+            value={editingData.category || ""}
+            onChange={(e) => setEditingData(prev => ({ ...prev, category: e.target.value }))}
+            className="bg-surface border-border h-8"
+          />
+        ) : (
+          <div className="font-medium text-foreground">{task.category}</div>
+        );
+
+      case "subCategory":
+        return editingTask === task.id ? (
+          <Input
+            value={editingData.subCategory || ""}
+            onChange={(e) => setEditingData(prev => ({ ...prev, subCategory: e.target.value }))}
+            className="bg-surface border-border h-8"
+          />
+        ) : (
+          <div className="font-medium text-foreground">{task.subCategory}</div>
+        );
+
+      case "team":
+        return editingTask === task.id ? (
+          <Select 
+            value={editingData.team || task.team}
+            onValueChange={(value) => setEditingData(prev => ({ ...prev, team: value }))}
+          >
+            <SelectTrigger className="bg-surface border-border h-8 w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-surface border-border z-50">
+              {teams.map(team => (
+                <SelectItem key={team} value={team}>{team}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Badge variant="outline">{task.team}</Badge>
+        );
+
+      case "status":
+        return (
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${task.status === 'active' ? 'bg-success' : 'bg-muted'}`} />
+            <span className={task.status === 'active' ? 'text-success' : 'text-foreground-muted'}>
+              {task.status}
+            </span>
+          </div>
+        );
+
+      case "type":
+        return editingTask === task.id ? (
+          <Select 
+            value={editingData.type || task.type}
+            onValueChange={(value: "direct" | "indirect") => setEditingData(prev => ({ ...prev, type: value }))}
+          >
+            <SelectTrigger className="bg-surface border-border h-8 w-24">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-surface border-border z-50">
+              <SelectItem value="direct">Direct</SelectItem>
+              <SelectItem value="indirect">Indirect</SelectItem>
+            </SelectContent>
+          </Select>
+        ) : (
+          <Badge variant={task.type === 'direct' ? 'default' : 'secondary'}>
+            {task.type}
+          </Badge>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   const handleBulkUploadData = async (data: Record<string, string>[]): Promise<any> => {
     const successful: Task[] = [];
@@ -239,12 +343,13 @@ const Tasks = () => {
           id: Date.now().toString() + index,
           category: row["Category"] || "",
           subCategory: row["Sub Category"] || "",
-          description: row["Description"] || "",
           team: row["Team"] || "",
-          estimatedTime: parseInt(row["Estimated Time (mins)"]) || 30,
-          priority: (row["Priority"] as "low" | "medium" | "high") || "medium",
           status: "active",
           type: (row["Type"] as "direct" | "indirect") || "direct",
+          // Backend fields
+          description: row["Description"] || "",
+          estimatedTime: parseInt(row["Estimated Time (mins)"]) || 30,
+          priority: (row["Priority"] as "low" | "medium" | "high") || "medium",
           createdBy: localStorage.getItem("userEmail") || "",
           createdAt: new Date().toISOString().split('T')[0]
         };
@@ -265,10 +370,9 @@ const Tasks = () => {
 
   const handleExport = () => {
     const csvContent = [
-      ["Category", "Sub Category", "Description", "Team", "Estimated Time (mins)", "Priority", "Status", "Type", "Created By", "Created Date"],
+      ["Category", "Sub Category", "Team", "Status", "Type"],
       ...tasks.map(task => [
-        task.category, task.subCategory, task.description, task.team, task.estimatedTime.toString(), 
-        task.priority, task.status, task.type, task.createdBy, task.createdAt
+        task.category, task.subCategory, task.team, task.status, task.type
       ])
     ].map(row => row.join(",")).join("\n");
 
@@ -284,11 +388,6 @@ const Tasks = () => {
   const bulkUploadValidation = {
     "Category": (value: string) => value.length < 2 ? "Category name too short" : null,
     "Sub Category": (value: string) => value.length < 2 ? "Sub category name too short" : null,
-    "Estimated Time (mins)": (value: string) => {
-      const num = parseInt(value);
-      return isNaN(num) || num <= 0 ? "Must be a positive number" : null;
-    },
-    "Priority": (value: string) => !["low", "medium", "high"].includes(value) ? "Priority must be low, medium, or high" : null,
     "Team": (value: string) => !teams.includes(value) ? `Team must be one of: ${teams.join(", ")}` : null,
     "Type": (value: string) => !["direct", "indirect"].includes(value) ? "Type must be direct or indirect" : null
   };
@@ -297,10 +396,7 @@ const Tasks = () => {
     {
       "Category": "Customer Support",
       "Sub Category": "Phone Support",
-      "Description": "Handle customer inquiries and provide support",
       "Team": "Support",
-      "Estimated Time (mins)": "15",
-      "Priority": "medium",
       "Type": "direct"
     }
   ];
@@ -310,7 +406,7 @@ const Tasks = () => {
       <div className="min-h-screen bg-gradient-to-br from-background via-surface to-surface-elevated p-6">
         <BulkUpload
           title="Bulk Upload Tasks"
-          templateColumns={["Category", "Sub Category", "Description", "Team", "Estimated Time (mins)", "Priority", "Type"]}
+          templateColumns={["Category", "Sub Category", "Team", "Type"]}
           sampleData={sampleData}
           onUpload={handleBulkUploadData}
           onClose={() => setShowBulkUpload(false)}
@@ -347,6 +443,7 @@ const Tasks = () => {
                 Delete Selected ({selectedTasks.length})
               </Button>
             )}
+            <ColumnManagerTrigger onClick={() => setShowColumnManager(true)} />
             {canManageTasks && (
               <>
                 <Button variant="outline" onClick={() => setShowBulkUpload(true)}>
@@ -388,7 +485,7 @@ const Tasks = () => {
             </SelectTrigger>
             <SelectContent className="bg-surface border-border z-50">
               <SelectItem value="all">All Teams</SelectItem>
-              {teams.map(team => (
+              {teams.filter(team => team !== "All Teams").map(team => (
                 <SelectItem key={team} value={team}>{team}</SelectItem>
               ))}
             </SelectContent>
@@ -424,16 +521,11 @@ const Tasks = () => {
                         />
                       </th>
                     )}
-                    <th className="p-3 text-left font-semibold">Category</th>
-                    <th className="p-3 text-left font-semibold">Sub Category</th>
-                    <th className="p-3 text-left font-semibold">Description</th>
-                    <th className="p-3 text-left font-semibold">Team</th>
-                    <th className="p-3 text-left font-semibold">Est. Time</th>
-                    <th className="p-3 text-left font-semibold">Priority</th>
-                    <th className="p-3 text-left font-semibold">Status</th>
-                    <th className="p-3 text-left font-semibold">Type</th>
-                    <th className="p-3 text-left font-semibold">Created By</th>
-                    <th className="p-3 text-left font-semibold">Created Date</th>
+                    {columns.filter(col => col.visible).map(column => (
+                      <th key={column.key} className="p-3 text-left font-semibold">
+                        {column.label}
+                      </th>
+                    ))}
                     {canManageTasks && <th className="p-3 text-left font-semibold">Actions</th>}
                   </tr>
                 </thead>
@@ -448,128 +540,11 @@ const Tasks = () => {
                           />
                         </td>
                       )}
-                      <td className="p-3">
-                        {editingTask === task.id ? (
-                          <Input
-                            value={editingData.category || ""}
-                            onChange={(e) => setEditingData(prev => ({ ...prev, category: e.target.value }))}
-                            className="bg-surface border-border h-8"
-                          />
-                        ) : (
-                          <div className="font-medium text-foreground">{task.category}</div>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        {editingTask === task.id ? (
-                          <Input
-                            value={editingData.subCategory || ""}
-                            onChange={(e) => setEditingData(prev => ({ ...prev, subCategory: e.target.value }))}
-                            className="bg-surface border-border h-8"
-                          />
-                        ) : (
-                          <div className="font-medium text-foreground">{task.subCategory}</div>
-                        )}
-                      </td>
-                      <td className="p-3 max-w-xs">
-                        {editingTask === task.id ? (
-                          <Input
-                            value={editingData.description || ""}
-                            onChange={(e) => setEditingData(prev => ({ ...prev, description: e.target.value }))}
-                            className="bg-surface border-border h-8"
-                          />
-                        ) : (
-                          <div className="text-foreground-muted text-sm truncate">{task.description}</div>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        {editingTask === task.id ? (
-                          <Select 
-                            value={editingData.team || task.team}
-                            onValueChange={(value) => setEditingData(prev => ({ ...prev, team: value }))}
-                          >
-                            <SelectTrigger className="bg-surface border-border h-8 w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-surface border-border z-50">
-                              {teams.map(team => (
-                                <SelectItem key={team} value={team}>{team}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <Badge variant="outline">{task.team}</Badge>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        {editingTask === task.id ? (
-                          <Input
-                            type="number"
-                            value={editingData.estimatedTime || task.estimatedTime}
-                            onChange={(e) => setEditingData(prev => ({ ...prev, estimatedTime: parseInt(e.target.value) || 30 }))}
-                            className="bg-surface border-border h-8 w-20"
-                          />
-                        ) : (
-                          <div className="flex items-center gap-1 text-foreground-muted">
-                            <Clock className="w-4 h-4" />
-                            {task.estimatedTime}m
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        {editingTask === task.id ? (
-                          <Select 
-                            value={editingData.priority || task.priority}
-                            onValueChange={(value: "low" | "medium" | "high") => setEditingData(prev => ({ ...prev, priority: value }))}
-                          >
-                            <SelectTrigger className="bg-surface border-border h-8 w-24">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-surface border-border z-50">
-                              <SelectItem value="low">Low</SelectItem>
-                              <SelectItem value="medium">Medium</SelectItem>
-                              <SelectItem value="high">High</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <Badge variant={getPriorityBadge(task.priority) as any}>
-                            {task.priority}
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full ${task.status === 'active' ? 'bg-success' : 'bg-muted'}`} />
-                          <span className={task.status === 'active' ? 'text-success' : 'text-foreground-muted'}>
-                            {task.status}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="p-3">
-                        {editingTask === task.id ? (
-                          <Select 
-                            value={editingData.type || task.type}
-                            onValueChange={(value: "direct" | "indirect") => setEditingData(prev => ({ ...prev, type: value }))}
-                          >
-                            <SelectTrigger className="bg-surface border-border h-8 w-24">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-surface border-border z-50">
-                              <SelectItem value="direct">Direct</SelectItem>
-                              <SelectItem value="indirect">Indirect</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <Badge variant={task.type === 'direct' ? 'default' : 'secondary'}>
-                            {task.type}
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="p-3 text-foreground-muted text-sm">
-                        {task.createdBy.split('@')[0]}
-                      </td>
-                      <td className="p-3 text-foreground-muted text-sm">
-                        {task.createdAt}
-                      </td>
+                      {columns.filter(col => col.visible).map(column => (
+                        <td key={column.key} className="p-3">
+                          {renderCell(task, column.key)}
+                        </td>
+                      ))}
                       {canManageTasks && (
                         <td className="p-3">
                           <div className="flex gap-1">
@@ -644,6 +619,13 @@ const Tasks = () => {
           </CardContent>
         </Card>
       </div>
+      
+      <ColumnManager
+        columns={columns}
+        onColumnsChange={handleColumnsChange}
+        isOpen={showColumnManager}
+        onClose={() => setShowColumnManager(false)}
+      />
     </div>
   );
 };
