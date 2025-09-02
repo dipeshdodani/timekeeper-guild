@@ -8,6 +8,8 @@ import { ArrowLeft, Clock, Plus, Coffee, Send } from "lucide-react";
 import TimerRow from "@/components/TimerRow";
 import { AvailabilityTracker } from "@/components/AvailabilityTracker";
 import { useToast } from "@/hooks/use-toast";
+import { useGlobalTimer, setupTimerCleanup } from "@/hooks/useGlobalTimer";
+import { saveSubmittedTimesheet } from "@/utils/timesheetStorage";
 
 interface TimesheetRow {
   id: string;
@@ -38,6 +40,17 @@ const Timesheet = () => {
   const [globalBreakTime, setGlobalBreakTime] = useState<number>(0);
   const [isOnGlobalBreak, setIsOnGlobalBreak] = useState<boolean>(false);
   const [globalBreakStartTime, setGlobalBreakStartTime] = useState<number | null>(null);
+  
+  // Use global timer hook
+  const { 
+    startTimer, 
+    pauseTimer, 
+    stopTimer, 
+    getTimer, 
+    getCurrentTime, 
+    hasActiveTimer, 
+    removeTimer 
+  } = useGlobalTimer();
 
   useEffect(() => {
     const role = localStorage.getItem("userRole");
@@ -56,6 +69,10 @@ const Timesheet = () => {
       // Initialize with one empty row
       addNewRow();
     }
+
+    // Setup timer cleanup on app close
+    const cleanup = setupTimerCleanup();
+    return cleanup;
   }, [navigate]);
 
   const addNewRow = () => {
@@ -83,9 +100,20 @@ const Timesheet = () => {
   };
 
   const updateRow = (id: string, updates: Partial<TimesheetRow>) => {
-    setRows(prev => prev.map(row => 
-      row.id === id ? { ...row, ...updates } : row
-    ));
+    setRows(prev => prev.map(row => {
+      if (row.id === id) {
+        // Sync timer data from global state
+        const timer = getTimer(id);
+        return { 
+          ...row, 
+          ...updates,
+          totalTime: timer ? timer.totalTime : row.totalTime,
+          isActive: timer ? timer.isActive : false,
+          startTime: timer ? timer.startTime : null
+        };
+      }
+      return row;
+    }));
     saveToLocalStorage();
   };
 
@@ -99,52 +127,93 @@ const Timesheet = () => {
 
   const deleteRow = (id: string) => {
     setRows(prev => prev.filter(row => row.id !== id));
+    removeTimer(id); // Clean up timer state
     saveToLocalStorage();
   };
 
   const handleSubmit = () => {
-    toast({
-      title: "Timesheet Submitted",
-      description: "Your timesheet has been submitted successfully.",
-    });
-    console.log("Submitting timesheet data:", rows);
-    navigate("/dashboard");
-  };
+    try {
+      // Stop all active timers before submitting
+      rows.forEach(row => {
+        if (row.isActive) {
+          pauseTimer(row.id);
+        }
+      });
 
-  // Calculate total logged time from all rows
-  const totalLoggedTime = rows.reduce((total, row) => total + row.totalTime, 0);
-
-  // Timer control functions
-  const startTimer = (id: string) => {
-    const now = Date.now();
-    setRows(prev => prev.map(row => 
-      row.id === id 
-        ? { ...row, isActive: true, startTime: now }
-        : { ...row, isActive: false, startTime: null } // Stop other timers
-    ));
-  };
-
-  const pauseTimer = (id: string) => {
-    setRows(prev => prev.map(row => {
-      if (row.id === id && row.isActive && row.startTime) {
-        const elapsed = Math.floor((Date.now() - row.startTime) / 1000);
-        return { 
-          ...row, 
-          isActive: false, 
-          startTime: null,
-          totalTime: row.totalTime + elapsed
+      // Get final timer data and save submission
+      const finalRows = rows.map(row => {
+        const timer = getTimer(row.id);
+        return {
+          ...row,
+          totalTime: timer ? timer.totalTime : row.totalTime,
+          isActive: false,
+          startTime: null
         };
-      }
-      return row;
+      });
+
+      saveSubmittedTimesheet(finalRows);
+      
+      toast({
+        title: "Timesheet Submitted",
+        description: "Your timesheet has been submitted successfully.",
+      });
+      
+      console.log("Submitting timesheet data:", finalRows);
+      navigate("/dashboard");
+    } catch (error) {
+      toast({
+        title: "Submission Failed",
+        description: "There was an error submitting your timesheet. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Calculate total logged time from all rows (using global timer state)
+  const totalLoggedTime = rows.reduce((total, row) => {
+    return total + getCurrentTime(row.id);
+  }, 0);
+
+  // Timer control functions (now use global timer)
+  const handleStartTimer = (id: string) => {
+    startTimer(id);
+    // Sync local state with timer state
+    setRows(prev => prev.map(row => {
+      const timer = getTimer(row.id);
+      return {
+        ...row,
+        isActive: timer ? timer.isActive : false,
+        startTime: timer ? timer.startTime : null
+      };
     }));
   };
 
-  const resetTimer = (id: string) => {
-    setRows(prev => prev.map(row => 
-      row.id === id 
-        ? { ...row, isActive: false, startTime: null, totalTime: 0 }
-        : row
-    ));
+  const handlePauseTimer = (id: string) => {
+    pauseTimer(id);
+    // Sync local state with timer state
+    setRows(prev => prev.map(row => {
+      const timer = getTimer(row.id);
+      return {
+        ...row,
+        isActive: timer ? timer.isActive : false,
+        startTime: timer ? timer.startTime : null,
+        totalTime: timer ? timer.totalTime : row.totalTime
+      };
+    }));
+  };
+
+  const handleStopTimer = (id: string) => {
+    stopTimer(id);
+    // Sync local state with timer state
+    setRows(prev => prev.map(row => {
+      const timer = getTimer(row.id);
+      return {
+        ...row,
+        isActive: timer ? timer.isActive : false,
+        startTime: timer ? timer.startTime : null,
+        totalTime: timer ? timer.totalTime : row.totalTime
+      };
+    }));
   };
 
   const toggleGlobalBreak = () => {
@@ -158,18 +227,23 @@ const Timesheet = () => {
       setGlobalBreakStartTime(null);
     } else {
       // Start break - pause all active timers
-      setRows(prev => prev.map(row => {
-        if (row.isActive && row.startTime) {
-          const elapsed = Math.floor((Date.now() - row.startTime) / 1000);
-          return { 
-            ...row, 
-            isActive: false, 
-            startTime: null,
-            totalTime: row.totalTime + elapsed
-          };
+      rows.forEach(row => {
+        if (row.isActive) {
+          pauseTimer(row.id);
         }
-        return row;
+      });
+      
+      // Sync local state
+      setRows(prev => prev.map(row => {
+        const timer = getTimer(row.id);
+        return {
+          ...row,
+          isActive: timer ? timer.isActive : false,
+          startTime: timer ? timer.startTime : null,
+          totalTime: timer ? timer.totalTime : row.totalTime
+        };
       }));
+      
       setIsOnGlobalBreak(true);
       setGlobalBreakStartTime(Date.now());
     }
@@ -273,9 +347,9 @@ const Timesheet = () => {
               dropdownData={dropdownData}
               onUpdate={updateRow}
               onDelete={deleteRow}
-              onStartTimer={startTimer}
-              onPauseTimer={pauseTimer}
-              onResetTimer={resetTimer}
+              onStartTimer={handleStartTimer}
+              onPauseTimer={handlePauseTimer}
+              onStopTimer={handleStopTimer}
               isOnGlobalBreak={isOnGlobalBreak}
             />
           ))}

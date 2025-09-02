@@ -46,7 +46,7 @@ interface TimerRowProps {
   onDelete: (id: string) => void;
   onStartTimer: (id: string) => void;
   onPauseTimer: (id: string) => void;
-  onResetTimer: (id: string) => void;
+  onStopTimer: (id: string) => void;
   isOnGlobalBreak: boolean;
 }
 
@@ -57,7 +57,7 @@ const TimerRow: React.FC<TimerRowProps> = ({
   onDelete,
   onStartTimer,
   onPauseTimer,
-  onResetTimer,
+  onStopTimer,
   isOnGlobalBreak
 }) => {
   const [taskAHT, setTaskAHT] = useState<number>(0);
@@ -171,10 +171,10 @@ const TimerRow: React.FC<TimerRowProps> = ({
                   
                   <Button
                     size="sm"
-                    onClick={() => onResetTimer(row.id)}
+                    onClick={() => onStopTimer(row.id)}
                     variant="outline"
                     className="h-6 w-6 p-0"
-                    title="Reset timer"
+                    title="Stop timer"
                   >
                     <Square className="w-3 h-3" />
                   </Button>

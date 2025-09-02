@@ -9,6 +9,7 @@ import { ArrowLeft, BarChart3, FileText, Calendar, Download, Filter } from "luci
 import { DateRangePicker } from "@/components/DateRangePicker";
 import { PerformanceFilters, FilterPeriod } from "@/components/PerformanceFilters";
 import { useToast } from "@/hooks/use-toast";
+import { getReportData, getSubmittedTimesheets } from "@/utils/timesheetStorage";
 
 const Reports = () => {
   const [userRole, setUserRole] = useState<string>("");
@@ -74,23 +75,43 @@ const Reports = () => {
     }
   };
 
-  const sampleReportData = {
-    timeSummary: {
-      totalHours: 168.5,
-      billableHours: 145.2,
-      avgDailyHours: 8.4,
-      utilizationRate: 86.2,
-      avgAHT: 32.5,
-      ahtEfficiency: 94.2
-    },
-    tasks: [
-      { name: "Customer Support - Phone Support", hours: 45.5, percentage: 27, aht: 15, actualAvgTime: 14.2 },
-      { name: "Technical - Code Review", hours: 38.2, percentage: 23, aht: 30, actualAvgTime: 28.5 },
-      { name: "Content - Documentation", hours: 32.8, percentage: 19, aht: 45, actualAvgTime: 43.1 },
-      { name: "Customer Support - Email Support", hours: 28.0, percentage: 17, aht: 10, actualAvgTime: 9.8 },
-      { name: "Technical - Bug Fixing", hours: 24.0, percentage: 14, aht: 90, actualAvgTime: 87.3 }
-    ]
+  // Get actual report data from submitted timesheets
+  const getActualReportData = () => {
+    let startDate: Date | undefined;
+    let endDate: Date | undefined;
+    
+    if (dateRange === "custom" && customStartDate && customEndDate) {
+      startDate = customStartDate;
+      endDate = customEndDate;
+    } else {
+      const now = new Date();
+      switch (dateRange) {
+        case "this-week":
+          const startOfWeek = new Date(now);
+          startOfWeek.setDate(now.getDate() - now.getDay());
+          startDate = startOfWeek;
+          endDate = now;
+          break;
+        case "this-month":
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = now;
+          break;
+        case "last-month":
+          startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+          break;
+        default:
+          // Last 7 days
+          startDate = new Date(now);
+          startDate.setDate(now.getDate() - 7);
+          endDate = now;
+      }
+    }
+    
+    return getReportData(startDate, endDate);
   };
+
+  const reportData = getActualReportData();
 
   // Get filtered employees based on selected team
   const getFilteredEmployees = () => {
@@ -147,25 +168,24 @@ const Reports = () => {
       case "time-summary":
         csvContent = [
           ["Metric", "Value"],
-          ["Total Hours", sampleReportData.timeSummary.totalHours],
-          ["Billable Hours", sampleReportData.timeSummary.billableHours],
-          ["Average Daily Hours", sampleReportData.timeSummary.avgDailyHours],
-          ["Utilization Rate", `${sampleReportData.timeSummary.utilizationRate}%`]
+          ["Total Hours", reportData.timeSummary.totalHours],
+          ["Billable Hours", reportData.timeSummary.billableHours],
+          ["Average Daily Hours", reportData.timeSummary.avgDailyHours],
+          ["Utilization Rate", `${reportData.timeSummary.utilizationRate}%`]
         ].map(row => row.join(",")).join("\n");
         filename = `time_summary_${dateRangeStr}_${timestamp}.csv`;
         break;
       case "task-breakdown":
         csvContent = [
-          ["Task Name", "Hours", "Percentage"],
-          ...sampleReportData.tasks.map(task => [task.name, task.hours, `${task.percentage}%`])
+          ["Task Name", "Hours", "Percentage", "Actual Avg Time"],
+          ...reportData.tasks.map(task => [task.name, task.hours, `${task.percentage}%`, `${task.actualAvgTime}min`])
         ].map(row => row.join(",")).join("\n");
         filename = `task_breakdown_${dateRangeStr}_${timestamp}.csv`;
         break;
       case "employee-summary":
-        const filteredEmployees = getFilteredReportData();
         csvContent = [
           ["Employee ID", "Name", "Total Hours", "Tasks Completed", "Avg AHT", "AHT Efficiency"],
-          ...filteredEmployees.map(emp => [emp.id, emp.name, emp.totalHours.toFixed(1), emp.tasks, emp.avgAHT.toFixed(1), `${emp.ahtEfficiency.toFixed(1)}%`])
+          ...reportData.employees.map(emp => [emp.id, emp.name, emp.totalHours.toFixed(1), emp.tasks, emp.avgAHT.toFixed(1), `${emp.ahtEfficiency.toFixed(1)}%`])
         ].map(row => row.join(",")).join("\n");
         filename = `employee_summary_${dateRangeStr}_${timestamp}.csv`;
         break;
@@ -348,27 +368,27 @@ const Reports = () => {
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-foreground-muted">Total Hours:</span>
-                  <span className="font-semibold">{sampleReportData.timeSummary.totalHours}h</span>
+                  <span className="font-semibold">{reportData.timeSummary.totalHours}h</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-foreground-muted">Billable Hours:</span>
-                  <span className="font-semibold">{sampleReportData.timeSummary.billableHours}h</span>
+                  <span className="font-semibold">{reportData.timeSummary.billableHours}h</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-foreground-muted">Avg Daily Hours:</span>
-                  <span className="font-semibold">{sampleReportData.timeSummary.avgDailyHours}h</span>
+                  <span className="font-semibold">{reportData.timeSummary.avgDailyHours}h</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-foreground-muted">Utilization Rate:</span>
-                  <span className="font-semibold text-success">{sampleReportData.timeSummary.utilizationRate}%</span>
+                  <span className="font-semibold text-success">{reportData.timeSummary.utilizationRate}%</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-foreground-muted">Avg AHT:</span>
-                  <span className="font-semibold">{sampleReportData.timeSummary.avgAHT}min</span>
+                  <span className="font-semibold">{reportData.timeSummary.avgAHT}min</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-foreground-muted">AHT Efficiency:</span>
-                  <span className="font-semibold text-success">{sampleReportData.timeSummary.ahtEfficiency}%</span>
+                  <span className="font-semibold text-success">{reportData.timeSummary.ahtEfficiency}%</span>
                 </div>
               </div>
             </CardContent>
@@ -381,7 +401,7 @@ const Reports = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {sampleReportData.tasks.map((task, index) => (
+                {reportData.tasks.length > 0 ? reportData.tasks.map((task, index) => (
                   <div key={index} className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
@@ -398,14 +418,15 @@ const Reports = () => {
                       </div>
                     </div>
                     <div className="flex justify-between text-xs text-foreground-muted pl-2">
-                      <span>Target AHT: {task.aht}min</span>
                       <span>Actual Avg: {task.actualAvgTime}min</span>
-                      <span className={task.actualAvgTime <= task.aht ? 'text-success' : 'text-destructive'}>
-                        {task.actualAvgTime <= task.aht ? '✓' : '⚠'}
-                      </span>
                     </div>
                   </div>
-                ))}
+                )) : (
+                  <div className="text-center py-4 text-foreground-muted">
+                    <p>No task data available for the selected period.</p>
+                    <p className="text-xs mt-1">Submit some timesheets to see task breakdown here.</p>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -460,15 +481,15 @@ const Reports = () => {
           <h2 className="text-xl font-semibold text-foreground mb-4">Quick Statistics</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="p-4 bg-surface border-border">
-              <div className="text-2xl font-bold text-primary">{sampleReportData.timeSummary.totalHours}h</div>
+              <div className="text-2xl font-bold text-primary">{reportData.timeSummary.totalHours}h</div>
               <div className="text-sm text-foreground-muted">Total Hours</div>
             </Card>
             <Card className="p-4 bg-surface border-border">
-              <div className="text-2xl font-bold text-primary">{sampleReportData.timeSummary.billableHours}h</div>
+              <div className="text-2xl font-bold text-primary">{reportData.timeSummary.billableHours}h</div>
               <div className="text-sm text-foreground-muted">Billable Hours</div>
             </Card>
             <Card className="p-4 bg-surface border-border">
-              <div className="text-2xl font-bold text-primary">{sampleReportData.timeSummary.utilizationRate}%</div>
+              <div className="text-2xl font-bold text-primary">{reportData.timeSummary.utilizationRate}%</div>
               <div className="text-sm text-foreground-muted">Utilization</div>
             </Card>
             <Card className="p-4 bg-surface border-border">
