@@ -26,6 +26,10 @@ interface TimesheetRow {
   receivedDate: string;
   ticketCount: number;
   comments: string;
+  // Timer fields
+  isActive: boolean;
+  totalTime: number;
+  startTime: number | null;
 }
 
 interface TimerRowProps {
@@ -40,13 +44,21 @@ interface TimerRowProps {
   };
   onUpdate: (id: string, updates: Partial<TimesheetRow>) => void;
   onDelete: (id: string) => void;
+  onStartTimer: (id: string) => void;
+  onPauseTimer: (id: string) => void;
+  onResetTimer: (id: string) => void;
+  isOnGlobalBreak: boolean;
 }
 
 const TimerRow: React.FC<TimerRowProps> = ({ 
   row, 
   dropdownData, 
   onUpdate, 
-  onDelete
+  onDelete,
+  onStartTimer,
+  onPauseTimer,
+  onResetTimer,
+  isOnGlobalBreak
 }) => {
   const [taskAHT, setTaskAHT] = useState<number>(0);
 
@@ -88,11 +100,28 @@ const TimerRow: React.FC<TimerRowProps> = ({
     }
   };
 
+  // Timer display function
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Calculate current time for display
+  const getCurrentTime = () => {
+    if (row.isActive && row.startTime) {
+      const elapsed = Math.floor((Date.now() - row.startTime) / 1000);
+      return row.totalTime + elapsed;
+    }
+    return row.totalTime;
+  };
+
   return (
     <Card className="shadow-sm border-border">
         <CardContent className="p-3">
           <div className="space-y-3">
-            {/* Row Header with Status and Delete */}
+            {/* Row Header with Timer Controls and Status */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Badge variant={getStatusBadgeVariant(row.status)} className="text-xs py-0 px-2 h-5">
@@ -104,19 +133,66 @@ const TimerRow: React.FC<TimerRowProps> = ({
                     <span>AHT: {taskAHT}min</span>
                   </div>
                 )}
+                
+                {/* Timer Display */}
+                <div className="flex items-center gap-2 bg-muted/50 rounded px-2 py-1">
+                  <Timer className="w-3 h-3 text-primary" />
+                  <span className="text-xs font-mono text-foreground">
+                    {formatTime(getCurrentTime())}
+                  </span>
+                </div>
               </div>
-              <Button
-                size="sm"
-                onClick={() => onDelete(row.id)}
-                variant="destructive"
-                className="h-7 w-7 p-0"
-              >
-                <Trash2 className="w-3 h-3" />
-              </Button>
+              
+              <div className="flex items-center gap-1">
+                {/* Timer Controls */}
+                <div className="flex items-center gap-1">
+                  {!row.isActive ? (
+                    <Button
+                      size="sm"
+                      onClick={() => onStartTimer(row.id)}
+                      variant="outline"
+                      className="h-6 w-6 p-0"
+                      disabled={isOnGlobalBreak}
+                      title={isOnGlobalBreak ? "Cannot start timer while on break" : "Start timer"}
+                    >
+                      <Play className="w-3 h-3" />
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={() => onPauseTimer(row.id)}
+                      variant="outline"
+                      className="h-6 w-6 p-0"
+                      title="Pause timer"
+                    >
+                      <Pause className="w-3 h-3" />
+                    </Button>
+                  )}
+                  
+                  <Button
+                    size="sm"
+                    onClick={() => onResetTimer(row.id)}
+                    variant="outline"
+                    className="h-6 w-6 p-0"
+                    title="Reset timer"
+                  >
+                    <Square className="w-3 h-3" />
+                  </Button>
+                </div>
+                
+                <Button
+                  size="sm"
+                  onClick={() => onDelete(row.id)}
+                  variant="destructive"
+                  className="h-6 w-6 p-0 ml-2"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
+              </div>
             </div>
 
             {/* Form Fields Grid - Excel-like Row */}
-            <div className="grid grid-cols-6 lg:grid-cols-11 gap-2 text-xs">
+            <div className="grid grid-cols-6 lg:grid-cols-12 gap-2 text-xs">
             {/* Ticket Number */}
             <div className="col-span-1">
               <Input
