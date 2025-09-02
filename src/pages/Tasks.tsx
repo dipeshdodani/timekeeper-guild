@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, Search, Edit, Trash2, CheckCircle, Clock, AlertTriangle } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Plus, Search, Edit, Trash2, CheckCircle, Clock, AlertTriangle, Save, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Task {
@@ -26,20 +27,9 @@ const Tasks = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
-  const [isAddingTask, setIsAddingTask] = useState(false);
-  const [newTask, setNewTask] = useState<{
-    name: string;
-    description: string;
-    category: string;
-    estimatedTime: number;
-    priority: "low" | "medium" | "high";
-  }>({
-    name: "",
-    description: "",
-    category: "",
-    estimatedTime: 30,
-    priority: "medium"
-  });
+  const [editingTask, setEditingTask] = useState<string | null>(null);
+  const [editingData, setEditingData] = useState<Partial<Task>>({});
+  const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -51,7 +41,7 @@ const Tasks = () => {
     }
     setUserRole(role);
     
-    // Load sample tasks
+    // Load sample tasks with updated categories
     const sampleTasks: Task[] = [
       {
         id: "1",
@@ -66,9 +56,9 @@ const Tasks = () => {
       },
       {
         id: "2", 
-        name: "Technical Documentation",
-        description: "Create and update technical documentation",
-        category: "Documentation",
+        name: "CI Pipeline Configuration",
+        description: "Set up and maintain continuous integration pipelines",
+        category: "CI",
         estimatedTime: 45,
         priority: "high",
         status: "active",
@@ -77,10 +67,10 @@ const Tasks = () => {
       },
       {
         id: "3",
-        name: "Code Review",
-        description: "Review team member's code submissions",
-        category: "Development",
-        estimatedTime: 30,
+        name: "Database Migration Script",
+        description: "Create and execute database migration procedures",
+        category: "Migration",
+        estimatedTime: 60,
         priority: "high",
         status: "active",
         createdBy: "admin@company.com",
@@ -88,14 +78,25 @@ const Tasks = () => {
       },
       {
         id: "4",
-        name: "Training Session",
-        description: "Conduct training for new team members",
-        category: "Training",
-        estimatedTime: 120,
+        name: "Environment Configuration",
+        description: "Configure system environments and settings",
+        category: "Config",
+        estimatedTime: 30,
         priority: "medium",
-        status: "inactive",
+        status: "active",
         createdBy: "sme@company.com",
         createdAt: "2024-01-08"
+      },
+      {
+        id: "5",
+        name: "Exxat One Integration",
+        description: "Integrate with Exxat One platform systems",
+        category: "Exxat One",
+        estimatedTime: 90,
+        priority: "high",
+        status: "active",
+        createdBy: "admin@company.com",
+        createdAt: "2024-01-14"
       }
     ];
     setTasks(sampleTasks);
@@ -111,37 +112,49 @@ const Tasks = () => {
   });
 
   const handleAddTask = () => {
-    if (!newTask.name || !newTask.category) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const task: Task = {
+    const newTask: Task = {
       id: Date.now().toString(),
-      ...newTask,
+      name: "New Task",
+      description: "Task description",
+      category: "Support",
+      estimatedTime: 30,
+      priority: "medium",
       status: "active",
       createdBy: localStorage.getItem("userEmail") || "",
       createdAt: new Date().toISOString().split('T')[0]
     };
 
-    setTasks(prev => [...prev, task]);
-    setNewTask({
-      name: "",
-      description: "",
-      category: "",
-      estimatedTime: 30,
-      priority: "medium"
-    });
-    setIsAddingTask(false);
+    setTasks(prev => [...prev, newTask]);
+    setEditingTask(newTask.id);
+    setEditingData(newTask);
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task.id);
+    setEditingData({ ...task });
+  };
+
+  const handleSaveTask = () => {
+    if (!editingTask || !editingData.name) return;
+
+    setTasks(prev => prev.map(task => 
+      task.id === editingTask 
+        ? { ...task, ...editingData }
+        : task
+    ));
+    
+    setEditingTask(null);
+    setEditingData({});
     
     toast({
       title: "Success",
-      description: "Task added successfully"
+      description: "Task updated successfully"
     });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingTask(null);
+    setEditingData({});
   };
 
   const toggleTaskStatus = (taskId: string) => {
@@ -160,6 +173,34 @@ const Tasks = () => {
     });
   };
 
+  const handleBulkDelete = () => {
+    if (selectedTasks.length === 0) return;
+    
+    setTasks(prev => prev.filter(task => !selectedTasks.includes(task.id)));
+    setSelectedTasks([]);
+    
+    toast({
+      title: "Tasks Deleted",
+      description: `${selectedTasks.length} tasks have been removed`
+    });
+  };
+
+  const toggleTaskSelection = (taskId: string) => {
+    setSelectedTasks(prev => 
+      prev.includes(taskId) 
+        ? prev.filter(id => id !== taskId)
+        : [...prev, taskId]
+    );
+  };
+
+  const toggleAllTasks = () => {
+    if (selectedTasks.length === filteredTasks.length) {
+      setSelectedTasks([]);
+    } else {
+      setSelectedTasks(filteredTasks.map(task => task.id));
+    }
+  };
+
   const getPriorityBadge = (priority: string) => {
     const variants = {
       low: "secondary",
@@ -169,9 +210,7 @@ const Tasks = () => {
     return variants[priority as keyof typeof variants] || "default";
   };
 
-  const getStatusIcon = (status: string) => {
-    return status === "active" ? CheckCircle : Clock;
-  };
+  const categories = ["Support", "CI", "Migration", "Config", "Exxat One"];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-surface to-surface-elevated">
@@ -190,15 +229,26 @@ const Tasks = () => {
             <h1 className="text-3xl font-bold text-foreground">Task Management</h1>
             <p className="text-foreground-muted">Manage and organize your task definitions</p>
           </div>
-          {canManageTasks && (
-            <Button 
-              onClick={() => setIsAddingTask(true)}
-              className="bg-primary hover:bg-primary/90"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Task
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {selectedTasks.length > 0 && (
+              <Button 
+                variant="destructive" 
+                onClick={handleBulkDelete}
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Delete Selected ({selectedTasks.length})
+              </Button>
+            )}
+            {canManageTasks && (
+              <Button 
+                onClick={handleAddTask}
+                className="bg-primary hover:bg-primary/90"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Task
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Filters */}
@@ -218,176 +268,230 @@ const Tasks = () => {
             <SelectTrigger className="w-48 bg-surface border-border">
               <SelectValue placeholder="Filter by category" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-surface border-border z-50">
               <SelectItem value="all">All Categories</SelectItem>
-              <SelectItem value="Support">Support</SelectItem>
-              <SelectItem value="Documentation">Documentation</SelectItem>
-              <SelectItem value="Development">Development</SelectItem>
-              <SelectItem value="Training">Training</SelectItem>
+              {categories.map(category => (
+                <SelectItem key={category} value={category}>{category}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
 
-        {/* Add Task Modal */}
-        {isAddingTask && (
-          <Card className="mb-6 shadow-medium border-border">
-            <CardHeader>
-              <CardTitle>Add New Task</CardTitle>
-              <CardDescription>Create a new task definition for your team</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="taskName">Task Name *</Label>
-                  <Input
-                    id="taskName"
-                    value={newTask.name}
-                    onChange={(e) => setNewTask(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter task name"
-                    className="bg-surface border-border"
+        {/* Excel-style Table */}
+        <Card className="shadow-soft border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <span>Tasks ({filteredTasks.length})</span>
+              {canManageTasks && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={selectedTasks.length === filteredTasks.length && filteredTasks.length > 0}
+                    onCheckedChange={toggleAllTasks}
                   />
+                  <span className="text-sm text-foreground-muted">Select All</span>
                 </div>
-                <div>
-                  <Label htmlFor="category">Category *</Label>
-                  <Select 
-                    value={newTask.category} 
-                    onValueChange={(value) => setNewTask(prev => ({ ...prev, category: value }))}
-                  >
-                    <SelectTrigger className="bg-surface border-border">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Support">Support</SelectItem>
-                      <SelectItem value="Documentation">Documentation</SelectItem>
-                      <SelectItem value="Development">Development</SelectItem>
-                      <SelectItem value="Training">Training</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={newTask.description}
-                  onChange={(e) => setNewTask(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Enter task description"
-                  className="bg-surface border-border"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="estimatedTime">Estimated Time (minutes)</Label>
-                  <Input
-                    id="estimatedTime"
-                    type="number"
-                    value={newTask.estimatedTime}
-                    onChange={(e) => setNewTask(prev => ({ ...prev, estimatedTime: parseInt(e.target.value) || 30 }))}
-                    className="bg-surface border-border"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="priority">Priority</Label>
-                  <Select 
-                    value={newTask.priority} 
-                    onValueChange={(value: "low" | "medium" | "high") => setNewTask(prev => ({ ...prev, priority: value }))}
-                  >
-                    <SelectTrigger className="bg-surface border-border">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="medium">Medium</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button onClick={handleAddTask}>Add Task</Button>
-                <Button variant="outline" onClick={() => setIsAddingTask(false)}>Cancel</Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Tasks List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredTasks.map((task) => {
-            const StatusIcon = getStatusIcon(task.status);
-            return (
-              <Card key={task.id} className="shadow-soft border-border hover:shadow-medium transition-all duration-300">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <StatusIcon className={`w-5 h-5 ${task.status === 'active' ? 'text-success' : 'text-foreground-muted'}`} />
-                        {task.name}
-                      </CardTitle>
-                      <div className="flex gap-2 mt-2">
-                        <Badge variant={getPriorityBadge(task.priority) as any}>
-                          {task.priority}
-                        </Badge>
-                        <Badge variant="outline">{task.category}</Badge>
-                      </div>
-                    </div>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr className="border-b border-border">
                     {canManageTasks && (
-                      <div className="flex gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => toggleTaskStatus(task.id)}
-                          className="w-8 h-8"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => deleteTask(task.id)}
-                          className="w-8 h-8 hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      <th className="w-12 p-3 text-left">
+                        <Checkbox
+                          checked={selectedTasks.length === filteredTasks.length && filteredTasks.length > 0}
+                          onCheckedChange={toggleAllTasks}
+                        />
+                      </th>
                     )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-foreground-muted text-sm mb-3">{task.description}</p>
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-1 text-foreground-subtle">
-                      <Clock className="w-4 h-4" />
-                      {task.estimatedTime} min
-                    </div>
-                    <div className="text-foreground-subtle">
-                      by {task.createdBy.split('@')[0]}
-                    </div>
-                  </div>
-                  <div className="text-xs text-foreground-subtle mt-2">
-                    Created: {task.createdAt}
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                    <th className="p-3 text-left font-semibold">Task Name</th>
+                    <th className="p-3 text-left font-semibold">Description</th>
+                    <th className="p-3 text-left font-semibold">Category</th>
+                    <th className="p-3 text-left font-semibold">Est. Time</th>
+                    <th className="p-3 text-left font-semibold">Priority</th>
+                    <th className="p-3 text-left font-semibold">Status</th>
+                    <th className="p-3 text-left font-semibold">Created By</th>
+                    <th className="p-3 text-left font-semibold">Created Date</th>
+                    {canManageTasks && <th className="p-3 text-left font-semibold">Actions</th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTasks.map((task) => (
+                    <tr key={task.id} className="border-b border-border hover:bg-muted/30 transition-colors">
+                      {canManageTasks && (
+                        <td className="p-3">
+                          <Checkbox
+                            checked={selectedTasks.includes(task.id)}
+                            onCheckedChange={() => toggleTaskSelection(task.id)}
+                          />
+                        </td>
+                      )}
+                      <td className="p-3">
+                        {editingTask === task.id ? (
+                          <Input
+                            value={editingData.name || ""}
+                            onChange={(e) => setEditingData(prev => ({ ...prev, name: e.target.value }))}
+                            className="bg-surface border-border h-8"
+                          />
+                        ) : (
+                          <div className="font-medium text-foreground">{task.name}</div>
+                        )}
+                      </td>
+                      <td className="p-3 max-w-xs">
+                        {editingTask === task.id ? (
+                          <Input
+                            value={editingData.description || ""}
+                            onChange={(e) => setEditingData(prev => ({ ...prev, description: e.target.value }))}
+                            className="bg-surface border-border h-8"
+                          />
+                        ) : (
+                          <div className="text-foreground-muted text-sm truncate">{task.description}</div>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {editingTask === task.id ? (
+                          <Select 
+                            value={editingData.category || task.category}
+                            onValueChange={(value) => setEditingData(prev => ({ ...prev, category: value }))}
+                          >
+                            <SelectTrigger className="bg-surface border-border h-8 w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-surface border-border z-50">
+                              {categories.map(category => (
+                                <SelectItem key={category} value={category}>{category}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Badge variant="outline">{task.category}</Badge>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {editingTask === task.id ? (
+                          <Input
+                            type="number"
+                            value={editingData.estimatedTime || task.estimatedTime}
+                            onChange={(e) => setEditingData(prev => ({ ...prev, estimatedTime: parseInt(e.target.value) || 30 }))}
+                            className="bg-surface border-border h-8 w-20"
+                          />
+                        ) : (
+                          <div className="flex items-center gap-1 text-foreground-muted">
+                            <Clock className="w-4 h-4" />
+                            {task.estimatedTime}m
+                          </div>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {editingTask === task.id ? (
+                          <Select 
+                            value={editingData.priority || task.priority}
+                            onValueChange={(value: "low" | "medium" | "high") => setEditingData(prev => ({ ...prev, priority: value }))}
+                          >
+                            <SelectTrigger className="bg-surface border-border h-8 w-24">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-surface border-border z-50">
+                              <SelectItem value="low">Low</SelectItem>
+                              <SelectItem value="medium">Medium</SelectItem>
+                              <SelectItem value="high">High</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Badge variant={getPriorityBadge(task.priority) as any}>
+                            {task.priority}
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${task.status === 'active' ? 'bg-success' : 'bg-muted'}`} />
+                          <span className={task.status === 'active' ? 'text-success' : 'text-foreground-muted'}>
+                            {task.status}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-3 text-foreground-muted text-sm">
+                        {task.createdBy.split('@')[0]}
+                      </td>
+                      <td className="p-3 text-foreground-muted text-sm">
+                        {task.createdAt}
+                      </td>
+                      {canManageTasks && (
+                        <td className="p-3">
+                          <div className="flex gap-1">
+                            {editingTask === task.id ? (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={handleSaveTask}
+                                  className="w-8 h-8 hover:bg-success/10 hover:text-success"
+                                >
+                                  <Save className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={handleCancelEdit}
+                                  className="w-8 h-8 hover:bg-destructive/10 hover:text-destructive"
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </>
+                            ) : (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleEditTask(task)}
+                                  className="w-8 h-8"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => toggleTaskStatus(task.id)}
+                                  className="w-8 h-8"
+                                >
+                                  <CheckCircle className={`w-4 h-4 ${task.status === 'active' ? 'text-success' : 'text-foreground-muted'}`} />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => deleteTask(task.id)}
+                                  className="w-8 h-8 hover:bg-destructive/10 hover:text-destructive"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-        {filteredTasks.length === 0 && (
-          <Card className="p-8 text-center shadow-soft border-border">
-            <AlertTriangle className="w-12 h-12 text-foreground-muted mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">No Tasks Found</h3>
-            <p className="text-foreground-muted">
-              {searchTerm || filterCategory !== "all" 
-                ? "Try adjusting your search or filter criteria"
-                : "Get started by adding your first task"
-              }
-            </p>
-          </Card>
-        )}
+            {filteredTasks.length === 0 && (
+              <div className="p-8 text-center">
+                <AlertTriangle className="w-12 h-12 text-foreground-muted mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-foreground mb-2">No Tasks Found</h3>
+                <p className="text-foreground-muted">
+                  {searchTerm || filterCategory !== "all" 
+                    ? "Try adjusting your search or filter criteria"
+                    : "Get started by adding your first task"
+                  }
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

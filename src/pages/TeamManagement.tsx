@@ -63,7 +63,7 @@ const TeamManagement = () => {
         name: "John Smith",
         email: "john.smith@company.com",
         role: "team-member",
-        team: "Support Team Alpha",
+        team: "Support",
         status: "active",
         joinDate: "2024-01-15",
         lastActive: "2024-01-20"
@@ -74,7 +74,7 @@ const TeamManagement = () => {
         name: "Sarah Johnson",
         email: "sarah.johnson@company.com",
         role: "sme",
-        team: "Development Team",
+        team: "CI",
         status: "active",
         joinDate: "2023-12-10",
         lastActive: "2024-01-19"
@@ -85,7 +85,7 @@ const TeamManagement = () => {
         name: "Mike Wilson",
         email: "mike.wilson@company.com", 
         role: "admin",
-        team: "Management",
+        team: "Migration",
         status: "active",
         joinDate: "2023-11-01",
         lastActive: "2024-01-20"
@@ -96,16 +96,27 @@ const TeamManagement = () => {
         name: "Lisa Chen",
         email: "lisa.chen@company.com",
         role: "team-member",
-        team: "Support Team Beta", 
+        team: "Config", 
         status: "inactive",
         joinDate: "2024-01-05",
         lastActive: "2024-01-18"
+      },
+      {
+        id: "5",
+        employeeId: "EMP005",
+        name: "David Brown",
+        email: "david.brown@company.com",
+        role: "sme",
+        team: "Exxat One",
+        status: "active",
+        joinDate: "2024-01-12",
+        lastActive: "2024-01-20"
       }
     ];
     setEmployees(sampleEmployees);
   }, [navigate]);
 
-  const teams = ["Support Team Alpha", "Support Team Beta", "Development Team", "Management", "QA Team"];
+  const teams = ["Support", "CI", "Migration", "Config", "Exxat One"];
 
   const filteredEmployees = employees.filter(employee => {
     const matchesSearch = employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -305,7 +316,7 @@ const TeamManagement = () => {
             <SelectTrigger className="w-48 bg-surface border-border">
               <SelectValue placeholder="Filter by role" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-surface border-border z-50">
               <SelectItem value="all">All Roles</SelectItem>
               <SelectItem value="team-member">Team Member</SelectItem>
               <SelectItem value="sme">SME</SelectItem>
@@ -316,7 +327,7 @@ const TeamManagement = () => {
             <SelectTrigger className="w-48 bg-surface border-border">
               <SelectValue placeholder="Filter by team" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-surface border-border z-50">
               <SelectItem value="all">All Teams</SelectItem>
               {teams.map(team => (
                 <SelectItem key={team} value={team}>{team}</SelectItem>
@@ -391,7 +402,7 @@ const TeamManagement = () => {
                     <SelectTrigger className="bg-surface border-border">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-surface border-border z-50">
                       <SelectItem value="team-member">Team Member</SelectItem>
                       <SelectItem value="sme">SME</SelectItem>
                       <SelectItem value="admin">Admin</SelectItem>
@@ -407,7 +418,7 @@ const TeamManagement = () => {
                     <SelectTrigger className="bg-surface border-border">
                       <SelectValue placeholder="Select team" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-surface border-border z-50">
                       {teams.map(team => (
                         <SelectItem key={team} value={team}>{team}</SelectItem>
                       ))}
