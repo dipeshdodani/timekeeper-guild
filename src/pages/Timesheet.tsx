@@ -26,10 +26,6 @@ interface TimesheetRow {
   receivedDate: string;
   ticketCount: number;
   comments: string;
-  // Timer fields
-  isActive: boolean;
-  totalTime: number;
-  startTime: number | null;
 }
 
 const Timesheet = () => {
@@ -52,6 +48,7 @@ const Timesheet = () => {
     getTimer, 
     getCurrentTime, 
     hasActiveTimer, 
+    getActiveTimerId,
     removeTimer 
   } = useGlobalTimer();
 
@@ -63,9 +60,6 @@ const Timesheet = () => {
     }
     setUserRole(role);
 
-    // Debug: Check timer state before loading
-    console.log("Loading timesheet page, checking timer state...");
-    
     // Load saved timesheet data
     const savedData = localStorage.getItem(`timesheet-${new Date().toDateString()}`);
     if (savedData) {
@@ -76,22 +70,15 @@ const Timesheet = () => {
       // Clean up orphaned timers that don't match current row IDs
       const validRowIds = rows.map((row: TimesheetRow) => row.id);
       cleanupOrphanedTimers(validRowIds);
-      
-      // CRITICAL: Stop all active timers when loading the page
-      // This ensures no phantom timers continue running from previous sessions
-      console.log("Stopping all active timers on page load...");
-      stopAllTimers();
     } else {
       // Initialize with one empty row
       addNewRow();
-      // Also stop any phantom timers for fresh start
-      stopAllTimers();
     }
 
     // Setup timer cleanup on app close
     const cleanup = setupTimerCleanup();
     return cleanup;
-  }, [navigate, stopAllTimers, cleanupOrphanedTimers]);
+  }, [navigate, cleanupOrphanedTimers]);
 
   const addNewRow = () => {
     const newRow: TimesheetRow = {
@@ -105,33 +92,18 @@ const Timesheet = () => {
       university: "",
       domain: "",
       clientType: "",
-      status: "Not Started",
-      receivedDate: "",
-      ticketCount: 0,
-      comments: "",
-      // Timer fields
-      isActive: false,
-      totalTime: 0,
-      startTime: null
+      status: "In Progress",
+      receivedDate: new Date().toISOString().split('T')[0],
+      ticketCount: 1,
+      comments: ""
     };
     setRows(prev => [...prev, newRow]);
   };
 
   const updateRow = (id: string, updates: Partial<TimesheetRow>) => {
-    setRows(prev => prev.map(row => {
-      if (row.id === id) {
-        // Sync timer data from global state
-        const timer = getTimer(id);
-        return { 
-          ...row, 
-          ...updates,
-          totalTime: timer ? timer.totalTime : row.totalTime,
-          isActive: timer ? timer.isActive : false,
-          startTime: timer ? timer.startTime : null
-        };
-      }
-      return row;
-    }));
+    setRows(prev => prev.map(row => 
+      row.id === id ? { ...row, ...updates } : row
+    ));
     saveToLocalStorage();
   };
 
@@ -159,9 +131,7 @@ const Timesheet = () => {
         const timer = getTimer(row.id);
         return {
           ...row,
-          totalTime: timer ? timer.totalTime : row.totalTime,
-          isActive: false,
-          startTime: null
+          totalTime: timer ? timer.totalTime : 0
         };
       });
 
@@ -191,46 +161,17 @@ const Timesheet = () => {
     return total + getCurrentTime(row.id);
   }, 0);
 
-  // Timer control functions (now use global timer)
+  // Timer control functions - simplified
   const handleStartTimer = (id: string) => {
     startTimer(id);
-    // Sync local state with timer state
-    setRows(prev => prev.map(row => {
-      const timer = getTimer(row.id);
-      return {
-        ...row,
-        isActive: timer ? timer.isActive : false,
-        startTime: timer ? timer.startTime : null
-      };
-    }));
   };
 
   const handlePauseTimer = (id: string) => {
     pauseTimer(id);
-    // Sync local state with timer state
-    setRows(prev => prev.map(row => {
-      const timer = getTimer(row.id);
-      return {
-        ...row,
-        isActive: timer ? timer.isActive : false,
-        startTime: timer ? timer.startTime : null,
-        totalTime: timer ? timer.totalTime : row.totalTime
-      };
-    }));
   };
 
   const handleStopTimer = (id: string) => {
     stopTimer(id);
-    // Sync local state with timer state
-    setRows(prev => prev.map(row => {
-      const timer = getTimer(row.id);
-      return {
-        ...row,
-        isActive: timer ? timer.isActive : false,
-        startTime: timer ? timer.startTime : null,
-        totalTime: timer ? timer.totalTime : row.totalTime
-      };
-    }));
   };
 
   const toggleGlobalBreak = () => {
@@ -244,23 +185,12 @@ const Timesheet = () => {
       setGlobalBreakStartTime(null);
     } else {
       // Start break - pause all active timers
-      rows.forEach(row => {
-        if (row.isActive) {
-          pauseTimer(row.id);
+      if (hasActiveTimer()) {
+        const activeTimerId = getActiveTimerId();
+        if (activeTimerId) {
+          pauseTimer(activeTimerId);
         }
-      });
-      
-      // Sync local state
-      setRows(prev => prev.map(row => {
-        const timer = getTimer(row.id);
-        return {
-          ...row,
-          isActive: timer ? timer.isActive : false,
-          startTime: timer ? timer.startTime : null,
-          totalTime: timer ? timer.totalTime : row.totalTime
-        };
-      }));
-      
+      }
       setIsOnGlobalBreak(true);
       setGlobalBreakStartTime(Date.now());
     }

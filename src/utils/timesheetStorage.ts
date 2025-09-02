@@ -13,9 +13,7 @@ interface TimesheetRow {
   receivedDate: string;
   ticketCount: number;
   comments: string;
-  totalTime: number;
-  isActive: boolean;
-  startTime: number | null;
+  totalTime?: number; // Optional for submission
 }
 
 interface TimesheetSubmission {
@@ -36,18 +34,14 @@ export const saveSubmittedTimesheet = (rows: TimesheetRow[], employeeInfo?: { id
     const existingData = localStorage.getItem(SUBMITTED_TIMESHEETS_KEY);
     const submissions: TimesheetSubmission[] = existingData ? JSON.parse(existingData) : [];
     
-    const totalHours = rows.reduce((total, row) => total + (row.totalTime / 3600), 0); // Convert seconds to hours
+    const totalHours = rows.reduce((total, row) => total + ((row.totalTime || 0) / 3600), 0); // Convert seconds to hours
     
     const submission: TimesheetSubmission = {
       id: Date.now().toString(),
       date: new Date().toISOString().split('T')[0],
       employeeId: employeeInfo?.id || 'current-user',
       employeeName: employeeInfo?.name || 'Current User',
-      rows: rows.map(row => ({
-        ...row,
-        isActive: false, // Ensure no active timers in submitted data
-        startTime: null
-      })),
+      rows: rows,
       totalHours,
       submittedAt: new Date().toISOString()
     };
@@ -111,13 +105,13 @@ export const getReportData = (startDate?: Date, endDate?: Date) => {
   
   allRows.forEach(row => {
     const taskName = row.taskName || `${row.category} - ${row.subCategory}`;
-    const hours = row.totalTime / 3600; // Convert seconds to hours
+    const hours = (row.totalTime || 0) / 3600; // Convert seconds to hours
     const existing = taskMap.get(taskName) || { hours: 0, count: 0, ahtTotal: 0 };
     
     taskMap.set(taskName, {
       hours: existing.hours + hours,
       count: existing.count + 1,
-      ahtTotal: existing.ahtTotal + (row.totalTime / 60) // Convert to minutes for AHT
+      ahtTotal: existing.ahtTotal + ((row.totalTime || 0) / 60) // Convert to minutes for AHT
     });
   });
   
@@ -148,7 +142,7 @@ export const getReportData = (startDate?: Date, endDate?: Date) => {
       taskCount: 0
     };
     
-    const submissionAHT = submission.rows.reduce((sum, row) => sum + (row.totalTime / 60), 0);
+    const submissionAHT = submission.rows.reduce((sum, row) => sum + ((row.totalTime || 0) / 60), 0);
     
     employeeMap.set(submission.employeeId, {
       ...existing,
@@ -178,7 +172,7 @@ export const getReportData = (startDate?: Date, endDate?: Date) => {
       billableHours: Number((totalHours * 0.85).toFixed(1)), // Assume 85% billable
       avgDailyHours: Number((totalHours / workingDays).toFixed(1)),
       utilizationRate: Number(((totalHours / (workingDays * 8)) * 100).toFixed(1)),
-      avgAHT: allRows.length > 0 ? Number((allRows.reduce((sum, row) => sum + (row.totalTime / 60), 0) / allRows.length).toFixed(1)) : 0,
+      avgAHT: allRows.length > 0 ? Number((allRows.reduce((sum, row) => sum + ((row.totalTime || 0) / 60), 0) / allRows.length).toFixed(1)) : 0,
       ahtEfficiency: 90 + Math.random() * 10 // Mock efficiency
     },
     tasks,

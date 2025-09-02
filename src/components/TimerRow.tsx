@@ -27,10 +27,6 @@ interface TimesheetRow {
   receivedDate: string;
   ticketCount: number;
   comments: string;
-  // Timer fields
-  isActive: boolean;
-  totalTime: number;
-  startTime: number | null;
 }
 
 interface TimerRowProps {
@@ -112,16 +108,13 @@ const TimerRow: React.FC<TimerRowProps> = ({
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Calculate current time for display using global timer state
+  // Get current time and timer state from global timer only
   const getCurrentTime = () => {
-    const globalTime = getGlobalCurrentTime(row.id);
-    const timer = getTimer(row.id);
-    
-    // Debug logging
-    console.log(`TimerRow ${row.id}: globalTime=${globalTime}, timer:`, timer, `row.isActive=${row.isActive}`);
-    
-    return globalTime;
+    return getGlobalCurrentTime(row.id);
   };
+
+  const timer = getTimer(row.id);
+  const isTimerActive = timer?.isActive || false;
 
   return (
     <Card className="shadow-sm border-border">
@@ -152,7 +145,7 @@ const TimerRow: React.FC<TimerRowProps> = ({
               <div className="flex items-center gap-1">
                 {/* Timer Controls */}
                 <div className="flex items-center gap-1">
-                  {!row.isActive ? (
+                  {!isTimerActive ? (
                     <Button
                       size="sm"
                       onClick={() => onStartTimer(row.id)}

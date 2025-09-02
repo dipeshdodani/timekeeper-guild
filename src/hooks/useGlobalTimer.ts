@@ -26,34 +26,33 @@ export const useGlobalTimer = () => {
     if (savedState) {
       try {
         const parsed = JSON.parse(savedState);
-        console.log('Loading timer state from localStorage:', parsed);
         
-        // CRITICAL: Stop all active timers when loading the hook
-        // This prevents phantom timers from previous sessions
+        // Only clean up timers if this is a true app restart (not just page navigation)
+        // Check if there's a significant time gap since last save
         const now = Date.now();
-        const cleanedTimers = parsed.timers.map((timer: TimerState) => {
-          if (timer.isActive && timer.startTime) {
-            const elapsed = Math.floor((now - timer.startTime) / 1000);
-            console.log(`Stopping phantom timer ${timer.id}, elapsed: ${elapsed}s`);
-            return { 
-              ...timer, 
-              isActive: false, 
-              startTime: null, 
-              totalTime: timer.totalTime + elapsed 
-            };
-          }
-          return { ...timer, isActive: false, startTime: null };
-        });
+        const timeSinceLastSave = parsed.lastSavedAt ? now - parsed.lastSavedAt : Infinity;
+        const isAppRestart = timeSinceLastSave > 30000; // 30 seconds gap indicates app restart
         
-        const cleanedState = { ...parsed, timers: cleanedTimers };
-        setTimerState(cleanedState);
-        
-        // Save the cleaned state back to localStorage
-        try {
-          localStorage.setItem(GLOBAL_TIMER_KEY, JSON.stringify(cleanedState));
-          console.log('Saved cleaned timer state to localStorage');
-        } catch (error) {
-          console.error('Error saving cleaned timer state:', error);
+        if (isAppRestart) {
+          // Only stop timers on actual app restart, not page navigation
+          const cleanedTimers = parsed.timers.map((timer: TimerState) => {
+            if (timer.isActive && timer.startTime) {
+              const elapsed = Math.floor((now - timer.startTime) / 1000);
+              return { 
+                ...timer, 
+                isActive: false, 
+                startTime: null, 
+                totalTime: timer.totalTime + elapsed 
+              };
+            }
+            return timer;
+          });
+          
+          const cleanedState = { ...parsed, timers: cleanedTimers };
+          setTimerState(cleanedState);
+        } else {
+          // Keep timers running for same session
+          setTimerState(parsed);
         }
       } catch (error) {
         console.error('Error loading timer state:', error);
