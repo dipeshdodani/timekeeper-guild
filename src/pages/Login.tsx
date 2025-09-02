@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Clock, Shield, Users } from "lucide-react";
 
 const Login = () => {
+  const [loginType, setLoginType] = useState<"employee" | "super-user">("employee");
+  const [employeeId, setEmployeeId] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("");
@@ -15,11 +17,21 @@ const Login = () => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (email && password && role) {
-      // Store user role in localStorage for demo
-      localStorage.setItem("userRole", role);
-      localStorage.setItem("userEmail", email);
-      navigate("/dashboard");
+    
+    if (loginType === "super-user") {
+      // Super User login with email
+      if (email && password) {
+        localStorage.setItem("userRole", "super-user");
+        localStorage.setItem("userEmail", email);
+        navigate("/dashboard");
+      }
+    } else {
+      // Employee login with Employee ID
+      if (employeeId && password && role) {
+        localStorage.setItem("userRole", role);
+        localStorage.setItem("employeeId", employeeId);
+        navigate("/dashboard");
+      }
     }
   };
 
@@ -50,50 +62,110 @@ const Login = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="your.email@company.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="bg-surface border-border focus:border-primary-glow"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="bg-surface border-border focus:border-primary-glow"
-                />
+              {/* Login Type Selection */}
+              <div className="flex gap-2 p-1 bg-surface rounded-lg border border-border">
+                <button
+                  type="button"
+                  onClick={() => setLoginType("employee")}
+                  className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                    loginType === "employee"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-foreground-muted hover:text-foreground"
+                  }`}
+                >
+                  Employee Login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLoginType("super-user")}
+                  className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
+                    loginType === "super-user"
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-foreground-muted hover:text-foreground"
+                  }`}
+                >
+                  Super User
+                </button>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="role">Role</Label>
-                <Select value={role} onValueChange={setRole} required>
-                  <SelectTrigger className="bg-surface border-border focus:border-primary-glow">
-                    <SelectValue placeholder="Select your role" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-surface border-border">
-                    {roles.map((roleOption) => (
-                      <SelectItem key={roleOption.value} value={roleOption.value}>
-                        <div className="flex items-center gap-2">
-                          <roleOption.icon className="w-4 h-4" />
-                          {roleOption.label}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {loginType === "super-user" ? (
+                // Super User Login Form
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="admin@company.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="bg-surface border-border focus:border-primary-glow"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="bg-surface border-border focus:border-primary-glow"
+                    />
+                  </div>
+                </>
+              ) : (
+                // Employee Login Form
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="employeeId">Employee ID</Label>
+                    <Input
+                      id="employeeId"
+                      type="text"
+                      placeholder="EMP001234"
+                      value={employeeId}
+                      onChange={(e) => setEmployeeId(e.target.value)}
+                      required
+                      className="bg-surface border-border focus:border-primary-glow"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="bg-surface border-border focus:border-primary-glow"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Role</Label>
+                    <Select value={role} onValueChange={setRole} required>
+                      <SelectTrigger className="bg-surface border-border focus:border-primary-glow">
+                        <SelectValue placeholder="Select your role" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-surface border-border">
+                        {roles.filter(r => r.value !== "super-user").map((roleOption) => (
+                          <SelectItem key={roleOption.value} value={roleOption.value}>
+                            <div className="flex items-center gap-2">
+                              <roleOption.icon className="w-4 h-4" />
+                              {roleOption.label}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
 
               <Button 
                 type="submit" 
