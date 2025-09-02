@@ -23,7 +23,6 @@ import {
   getDropdownData, 
   updateUniversities, 
   updateDomains, 
-  updateClientTypes, 
   updateStubs, 
   updateTasks 
 } from "@/utils/dropdownStorage";
@@ -33,7 +32,6 @@ import {
   BulkUploadResult, 
   University as UniversityType, 
   Domain as DomainType, 
-  ClientType as ClientTypeType, 
   StubName as StubNameType, 
   TaskWithAHT 
 } from "@/types/dropdown";
@@ -76,10 +74,8 @@ const DropdownManagement = () => {
       switch (type) {
         case 'universities':
           processedData = data.map(row => ({
-            name: row.Name,
-            country: row.Country,
-            state: row.State,
-            type: row.Type
+            name: row.University,
+            domain: row.Domain
           }));
           updateUniversities(processedData as UniversityType[]);
           break;
@@ -93,15 +89,6 @@ const DropdownManagement = () => {
           updateDomains(processedData as DomainType[]);
           break;
           
-        case 'clientTypes':
-          processedData = data.map(row => ({
-            name: row.Name,
-            description: row.Description,
-            priority: row.Priority
-          }));
-          updateClientTypes(processedData as ClientTypeType[]);
-          break;
-          
         case 'stubs':
           processedData = data.map(row => ({
             name: row.Name,
@@ -113,8 +100,9 @@ const DropdownManagement = () => {
           
         case 'tasks':
           processedData = data.map(row => ({
-            name: row.Task_Name,
-            aht: parseInt(row.AHT_Minutes) || 0
+            category: row.Category,
+            subCategory: row.Sub_Category,
+            aht: parseInt(row.AHT) || 0
           }));
           updateTasks(processedData as TaskWithAHT[]);
           break;
@@ -144,8 +132,8 @@ const DropdownManagement = () => {
     switch (type) {
       case 'universities':
         csvContent = [
-          ["Name", "Country", "State", "Type"],
-          ...dropdownData.universities.map(u => [u.name, u.country, u.state, u.type])
+          ["University", "Domain"],
+          ...dropdownData.universities.map(u => [u.name, u.domain])
         ].map(row => row.join(",")).join("\n");
         filename = "universities_export.csv";
         break;
@@ -158,14 +146,6 @@ const DropdownManagement = () => {
         filename = "domains_export.csv";
         break;
         
-      case 'clientTypes':
-        csvContent = [
-          ["Name", "Description", "Priority"],
-          ...dropdownData.clientTypes.map(c => [c.name, c.description, c.priority])
-        ].map(row => row.join(",")).join("\n");
-        filename = "client_types_export.csv";
-        break;
-        
       case 'stubs':
         csvContent = [
           ["Name", "Description", "Team"],
@@ -176,8 +156,8 @@ const DropdownManagement = () => {
         
       case 'tasks':
         csvContent = [
-          ["Task_Name", "AHT_Minutes"],
-          ...dropdownData.tasks.map(t => [t.name, t.aht.toString()])
+          ["Category", "Sub_Category", "AHT"],
+          ...dropdownData.tasks.map(t => [t.category, t.subCategory, t.aht.toString()])
         ].map(row => row.join(",")).join("\n");
         filename = "tasks_export.csv";
         break;
@@ -209,9 +189,6 @@ const DropdownManagement = () => {
       case 'domains':
         updateDomains([]);
         break;
-      case 'clientTypes':
-        updateClientTypes([]);
-        break;
       case 'stubs':
         updateStubs([]);
         break;
@@ -232,10 +209,10 @@ const DropdownManagement = () => {
     {
       id: 'universities' as DropdownType,
       title: 'Universities',
-      description: 'Manage university list with country and type information',
+      description: 'Manage university list with domain information',
       icon: GraduationCap,
       data: dropdownData.universities,
-      columns: ['Name', 'Country', 'State', 'Type']
+      columns: ['University', 'Domain']
     },
     {
       id: 'domains' as DropdownType,
@@ -244,14 +221,6 @@ const DropdownManagement = () => {
       icon: Globe,
       data: dropdownData.domains,
       columns: ['Name', 'Description', 'Category']
-    },
-    {
-      id: 'clientTypes' as DropdownType,
-      title: 'Client Types',
-      description: 'Manage client types with priority levels',
-      icon: Users,
-      data: dropdownData.clientTypes,
-      columns: ['Name', 'Description', 'Priority']
     },
     {
       id: 'stubs' as DropdownType,
@@ -264,10 +233,10 @@ const DropdownManagement = () => {
     {
       id: 'tasks' as DropdownType,
       title: 'Tasks with AHT',
-      description: 'Manage tasks with Average Handle Time (AHT) in minutes',
+      description: 'Manage tasks with Category, Sub Category and Average Handle Time (AHT)',
       icon: CheckSquare,
       data: dropdownData.tasks,
-      columns: ['Task Name', 'AHT (min)']
+      columns: ['Category', 'Sub Category', 'AHT (min)']
     }
   ];
 
@@ -310,7 +279,7 @@ const DropdownManagement = () => {
 
         {/* Management Tabs */}
         <Tabs defaultValue="universities" className="space-y-6">
-          <TabsList className="grid grid-cols-5 w-full">
+          <TabsList className="grid grid-cols-4 w-full">
             {dropdownSections.map(section => (
               <TabsTrigger key={section.id} value={section.id} className="flex items-center gap-2">
                 <section.icon className="w-4 h-4" />
@@ -389,9 +358,7 @@ const DropdownManagement = () => {
                                 {section.id === 'universities' && (
                                   <>
                                     <td className="p-3">{item.name}</td>
-                                    <td className="p-3">{item.country}</td>
-                                    <td className="p-3">{item.state}</td>
-                                    <td className="p-3">{item.type}</td>
+                                    <td className="p-3">{item.domain}</td>
                                   </>
                                 )}
                                 {section.id === 'domains' && (
@@ -399,13 +366,6 @@ const DropdownManagement = () => {
                                     <td className="p-3">{item.name}</td>
                                     <td className="p-3">{item.description}</td>
                                     <td className="p-3">{item.category}</td>
-                                  </>
-                                )}
-                                {section.id === 'clientTypes' && (
-                                  <>
-                                    <td className="p-3">{item.name}</td>
-                                    <td className="p-3">{item.description}</td>
-                                    <td className="p-3">{item.priority}</td>
                                   </>
                                 )}
                                 {section.id === 'stubs' && (
@@ -417,7 +377,8 @@ const DropdownManagement = () => {
                                 )}
                                 {section.id === 'tasks' && (
                                   <>
-                                    <td className="p-3">{item.name}</td>
+                                    <td className="p-3">{item.category}</td>
+                                    <td className="p-3">{item.subCategory}</td>
                                     <td className="p-3">
                                       <Badge variant="secondary">{item.aht}min</Badge>
                                     </td>

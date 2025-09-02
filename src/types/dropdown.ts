@@ -1,14 +1,13 @@
 // Dropdown data type definitions
 export interface TaskWithAHT {
-  name: string;
+  category: string;
+  subCategory: string;
   aht: number; // in minutes
 }
 
 export interface University {
   name: string;
-  country: string;
-  state: string;
-  type: string;
+  domain: string;
 }
 
 export interface Domain {
@@ -50,24 +49,17 @@ export interface BulkUploadResult {
   errors: BulkUploadError[];
 }
 
-export type DropdownType = 'universities' | 'domains' | 'clientTypes' | 'stubs' | 'tasks';
+export type DropdownType = 'universities' | 'domains' | 'stubs' | 'tasks';
 
 export const DROPDOWN_TEMPLATES = {
   universities: [
-    { field: 'Name', example: 'Harvard University' },
-    { field: 'Country', example: 'United States' },
-    { field: 'State', example: 'Massachusetts' },
-    { field: 'Type', example: 'Private' }
+    { field: 'University', example: 'Harvard University' },
+    { field: 'Domain', example: 'Computer Science' }
   ],
   domains: [
     { field: 'Name', example: 'Computer Science' },
     { field: 'Description', example: 'Software and technology related tasks' },
     { field: 'Category', example: 'Technical' }
-  ],
-  clientTypes: [
-    { field: 'Name', example: 'Premium' },
-    { field: 'Description', example: 'High priority premium client' },
-    { field: 'Priority', example: 'High' }
   ],
   stubs: [
     { field: 'Name', example: 'Student Support' },
@@ -75,7 +67,8 @@ export const DROPDOWN_TEMPLATES = {
     { field: 'Team', example: 'Support Team Alpha' }
   ],
   tasks: [
-    { field: 'Task_Name', example: 'Customer Support' },
-    { field: 'AHT_Minutes', example: '15' }
+    { field: 'Category', example: 'Customer Support' },
+    { field: 'Sub_Category', example: 'Phone Support' },
+    { field: 'AHT', example: '15' }
   ]
 };

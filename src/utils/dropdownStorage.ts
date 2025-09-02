@@ -5,10 +5,10 @@ const STORAGE_KEY = "timesheet_dropdown_data";
 // Default data to populate initially
 const DEFAULT_DROPDOWN_DATA: DropdownData = {
   universities: [
-    { name: "Harvard University", country: "United States", state: "Massachusetts", type: "Private" },
-    { name: "MIT", country: "United States", state: "Massachusetts", type: "Private" },
-    { name: "Stanford University", country: "United States", state: "California", type: "Private" },
-    { name: "University of California", country: "United States", state: "California", type: "Public" }
+    { name: "Harvard University", domain: "Computer Science" },
+    { name: "MIT", domain: "Engineering" },
+    { name: "Stanford University", domain: "Computer Science" },
+    { name: "University of California", domain: "Business Administration" }
   ],
   domains: [
     { name: "Computer Science", description: "Software and technology related tasks", category: "Technical" },
@@ -29,11 +29,11 @@ const DEFAULT_DROPDOWN_DATA: DropdownData = {
     { name: "Administrative", description: "Administrative tasks", team: "Admin Team" }
   ],
   tasks: [
-    { name: "Customer Support", aht: 15 },
-    { name: "Code Review", aht: 30 },
-    { name: "Documentation", aht: 45 },
-    { name: "Training", aht: 60 },
-    { name: "Bug Fixing", aht: 90 }
+    { category: "Customer Support", subCategory: "Phone Support", aht: 15 },
+    { category: "Customer Support", subCategory: "Email Support", aht: 10 },
+    { category: "Technical", subCategory: "Code Review", aht: 30 },
+    { category: "Technical", subCategory: "Bug Fixing", aht: 90 },
+    { category: "Content", subCategory: "Documentation", aht: 45 }
   ]
 };
 
@@ -98,7 +98,7 @@ export const getSimpleDropdownData = () => {
     universities: data.universities.map(u => u.name),
     domains: data.domains.map(d => d.name),
     clientTypes: data.clientTypes.map(c => c.name),
-    tasks: data.tasks.map(t => t.name),
+    tasks: data.tasks.map(t => `${t.category} - ${t.subCategory}`),
     statuses: ["Not Started", "WIP", "On Hold - Client", "On Hold - Dev", "Completed"]
   };
 };
@@ -106,6 +106,6 @@ export const getSimpleDropdownData = () => {
 // Get AHT for a specific task
 export const getTaskAHT = (taskName: string): number | null => {
   const data = getDropdownData();
-  const task = data.tasks.find(t => t.name === taskName);
+  const task = data.tasks.find(t => `${t.category} - ${t.subCategory}` === taskName);
   return task ? task.aht : null;
 };
