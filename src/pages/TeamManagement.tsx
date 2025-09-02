@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Plus, Search, Edit, Trash2, Users, Upload, Download } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Plus, Search, Edit, Trash2, Users, Upload, Download, Save, X, ToggleLeft, ToggleRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import BulkUpload from "@/components/BulkUpload";
 
@@ -45,6 +47,9 @@ const TeamManagement = () => {
     team: "",
     password: ""
   });
+  const [editingEmployee, setEditingEmployee] = useState<string | null>(null);
+  const [editingData, setEditingData] = useState<Partial<Employee>>({});
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -183,9 +188,83 @@ const TeamManagement = () => {
 
   const deleteEmployee = (employeeId: string) => {
     setEmployees(prev => prev.filter(employee => employee.id !== employeeId));
+    setSelectedEmployees(prev => prev.filter(id => id !== employeeId));
     toast({
       title: "Employee Removed",
       description: "Employee has been removed successfully"
+    });
+  };
+
+  const handleEditEmployee = (employee: Employee) => {
+    setEditingEmployee(employee.id);
+    setEditingData({ ...employee });
+  };
+
+  const handleSaveEmployee = () => {
+    if (!editingEmployee || !editingData) return;
+
+    // Validation
+    if (!editingData.name || !editingData.email || !editingData.team) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check for duplicate employee ID if changed
+    if (editingData.employeeId && 
+        employees.some(emp => emp.id !== editingEmployee && emp.employeeId === editingData.employeeId)) {
+      toast({
+        title: "Error",
+        description: "Employee ID already exists",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setEmployees(prev => prev.map(employee => 
+      employee.id === editingEmployee 
+        ? { ...employee, ...editingData }
+        : employee
+    ));
+
+    setEditingEmployee(null);
+    setEditingData({});
+    toast({
+      title: "Success",
+      description: "Employee updated successfully"
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingEmployee(null);
+    setEditingData({});
+  };
+
+  const toggleEmployeeSelection = (employeeId: string) => {
+    setSelectedEmployees(prev => 
+      prev.includes(employeeId) 
+        ? prev.filter(id => id !== employeeId)
+        : [...prev, employeeId]
+    );
+  };
+
+  const toggleAllEmployees = () => {
+    if (selectedEmployees.length === filteredEmployees.length) {
+      setSelectedEmployees([]);
+    } else {
+      setSelectedEmployees(filteredEmployees.map(emp => emp.id));
+    }
+  };
+
+  const handleBulkDelete = () => {
+    setEmployees(prev => prev.filter(employee => !selectedEmployees.includes(employee.id)));
+    setSelectedEmployees([]);
+    toast({
+      title: "Employees Removed",
+      description: `${selectedEmployees.length} employees have been removed successfully`
     });
   };
 
@@ -314,6 +393,10 @@ const TeamManagement = () => {
             <p className="text-foreground-muted">Manage team members and their assignments</p>
           </div>
           <div className="flex gap-2">
+            <Button onClick={() => setIsAddingEmployee(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add Employee
+            </Button>
             {userRole === "super-user" && (
               <>
                 <Button variant="outline" onClick={() => setShowBulkUpload(true)}>
@@ -324,12 +407,14 @@ const TeamManagement = () => {
                   <Download className="w-4 h-4 mr-2" />
                   Export
                 </Button>
+                {selectedEmployees.length > 0 && (
+                  <Button variant="destructive" onClick={handleBulkDelete}>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Selected ({selectedEmployees.length})
+                  </Button>
+                )}
               </>
             )}
-            <Button onClick={() => setIsAddingEmployee(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Employee
-            </Button>
           </div>
         </div>
 
@@ -497,70 +582,177 @@ const TeamManagement = () => {
           </Card>
         )}
 
-        {/* Employees List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredEmployees.map((employee) => (
-            <Card key={employee.id} className="shadow-soft border-border hover:shadow-medium transition-all duration-300">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Users className="w-5 h-5 text-primary" />
-                      {employee.name}
-                    </CardTitle>
-                    <p className="text-sm text-foreground-muted">{employee.employeeId}</p>
-                    <div className="flex gap-2 mt-2">
+        {/* Employees Table */}
+        <Card className="shadow-soft border-border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={selectedEmployees.length === filteredEmployees.length && filteredEmployees.length > 0}
+                    onCheckedChange={toggleAllEmployees}
+                  />
+                </TableHead>
+                <TableHead>Employee ID</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Team</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Join Date</TableHead>
+                <TableHead>Last Active</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredEmployees.map((employee) => (
+                <TableRow key={employee.id} className="hover:bg-muted/50">
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedEmployees.includes(employee.id)}
+                      onCheckedChange={() => toggleEmployeeSelection(employee.id)}
+                    />
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {editingEmployee === employee.id ? (
+                      <Input
+                        value={editingData.employeeId || ""}
+                        onChange={(e) => setEditingData(prev => ({ ...prev, employeeId: e.target.value }))}
+                        className="w-24"
+                      />
+                    ) : (
+                      employee.employeeId
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editingEmployee === employee.id ? (
+                      <Input
+                        value={editingData.name || ""}
+                        onChange={(e) => setEditingData(prev => ({ ...prev, name: e.target.value }))}
+                        className="w-32"
+                      />
+                    ) : (
+                      employee.name
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editingEmployee === employee.id ? (
+                      <Input
+                        value={editingData.email || ""}
+                        onChange={(e) => setEditingData(prev => ({ ...prev, email: e.target.value }))}
+                        className="w-48"
+                      />
+                    ) : (
+                      employee.email
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editingEmployee === employee.id ? (
+                      <Select 
+                        value={editingData.role || employee.role} 
+                        onValueChange={(value: "team-member" | "sme" | "admin") => setEditingData(prev => ({ ...prev, role: value }))}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-surface border-border z-50">
+                          <SelectItem value="team-member">Team Member</SelectItem>
+                          <SelectItem value="sme">SME</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
                       <Badge variant={getRoleBadge(employee.role) as any}>
                         {getRoleDisplayName(employee.role)}
                       </Badge>
-                      <Badge variant={employee.status === "active" ? "default" : "secondary"}>
-                        {employee.status}
-                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {editingEmployee === employee.id ? (
+                      <Select 
+                        value={editingData.team || employee.team} 
+                        onValueChange={(value) => setEditingData(prev => ({ ...prev, team: value }))}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-surface border-border z-50">
+                          {teams.map(team => (
+                            <SelectItem key={team} value={team}>{team}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      employee.team
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={employee.status === "active" ? "default" : "secondary"}>
+                      {employee.status}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{employee.joinDate}</TableCell>
+                  <TableCell>{employee.lastActive}</TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      {editingEmployee === employee.id ? (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleSaveEmployee}
+                            className="w-8 h-8 hover:bg-success/10 hover:text-success"
+                          >
+                            <Save className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleCancelEdit}
+                            className="w-8 h-8 hover:bg-muted"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEditEmployee(employee)}
+                            className="w-8 h-8"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => toggleEmployeeStatus(employee.id)}
+                            className="w-8 h-8"
+                          >
+                            {employee.status === "active" ? (
+                              <ToggleRight className="w-4 h-4 text-success" />
+                            ) : (
+                              <ToggleLeft className="w-4 h-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => deleteEmployee(employee.id)}
+                            className="w-8 h-8 hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => toggleEmployeeStatus(employee.id)}
-                      className="w-8 h-8"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => deleteEmployee(employee.id)}
-                      className="w-8 h-8 hover:bg-destructive/10 hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <span className="text-foreground-muted">Email: </span>
-                    <span className="text-foreground">{employee.email}</span>
-                  </div>
-                  <div>
-                    <span className="text-foreground-muted">Team: </span>
-                    <span className="text-foreground">{employee.team}</span>
-                  </div>
-                  <div>
-                    <span className="text-foreground-muted">Joined: </span>
-                    <span className="text-foreground">{employee.joinDate}</span>
-                  </div>
-                  <div>
-                    <span className="text-foreground-muted">Last Active: </span>
-                    <span className="text-foreground">{employee.lastActive}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
 
         {filteredEmployees.length === 0 && (
           <Card className="p-8 text-center shadow-soft border-border">
