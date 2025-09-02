@@ -7,14 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Plus, Search, Edit, Trash2, CheckCircle, Clock, AlertTriangle, Save, X } from "lucide-react";
+import { ArrowLeft, Plus, Search, Edit, Trash2, CheckCircle, Clock, AlertTriangle, Save, X, Upload, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import BulkUpload from "@/components/BulkUpload";
 
 interface Task {
   id: string;
   name: string;
   description: string;
-  category: string;
+  team: string;
   estimatedTime: number;
   priority: "low" | "medium" | "high";
   status: "active" | "inactive";
@@ -26,10 +27,11 @@ const Tasks = () => {
   const [userRole, setUserRole] = useState<string>("");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterCategory, setFilterCategory] = useState("all");
+  const [filterTeam, setFilterTeam] = useState("all");
   const [editingTask, setEditingTask] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<Partial<Task>>({});
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -47,7 +49,7 @@ const Tasks = () => {
         id: "1",
         name: "Customer Support Call",
         description: "Handle customer inquiries and provide support",
-        category: "Support",
+        team: "Support",
         estimatedTime: 15,
         priority: "medium",
         status: "active",
@@ -58,7 +60,7 @@ const Tasks = () => {
         id: "2", 
         name: "CI Pipeline Configuration",
         description: "Set up and maintain continuous integration pipelines",
-        category: "CI",
+        team: "CI",
         estimatedTime: 45,
         priority: "high",
         status: "active",
@@ -69,7 +71,7 @@ const Tasks = () => {
         id: "3",
         name: "Database Migration Script",
         description: "Create and execute database migration procedures",
-        category: "Migration",
+        team: "Migration",
         estimatedTime: 60,
         priority: "high",
         status: "active",
@@ -80,7 +82,7 @@ const Tasks = () => {
         id: "4",
         name: "Environment Configuration",
         description: "Configure system environments and settings",
-        category: "Config",
+        team: "Config",
         estimatedTime: 30,
         priority: "medium",
         status: "active",
@@ -91,7 +93,7 @@ const Tasks = () => {
         id: "5",
         name: "Exxat One Integration",
         description: "Integrate with Exxat One platform systems",
-        category: "Exxat One",
+        team: "Exxat One",
         estimatedTime: 90,
         priority: "high",
         status: "active",
@@ -107,8 +109,8 @@ const Tasks = () => {
   const filteredTasks = tasks.filter(task => {
     const matchesSearch = task.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          task.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory === "all" || task.category === filterCategory;
-    return matchesSearch && matchesCategory;
+    const matchesTeam = filterTeam === "all" || task.team === filterTeam;
+    return matchesSearch && matchesTeam;
   });
 
   const handleAddTask = () => {
@@ -116,7 +118,7 @@ const Tasks = () => {
       id: Date.now().toString(),
       name: "New Task",
       description: "Task description",
-      category: "Support",
+      team: "Support",
       estimatedTime: 30,
       priority: "medium",
       status: "active",
@@ -210,7 +212,92 @@ const Tasks = () => {
     return variants[priority as keyof typeof variants] || "default";
   };
 
-  const categories = ["Support", "CI", "Migration", "Config", "Exxat One"];
+  const teams = ["Support", "CI", "Migration", "Config", "Exxat One"];
+
+  const handleBulkUploadData = async (data: Record<string, string>[]): Promise<any> => {
+    const successful: Task[] = [];
+    const errors: any[] = [];
+
+    data.forEach((row, index) => {
+      try {
+        const task: Task = {
+          id: Date.now().toString() + index,
+          name: row["Task Name"] || "",
+          description: row["Description"] || "",
+          team: row["Team"] || "",
+          estimatedTime: parseInt(row["Estimated Time (mins)"]) || 30,
+          priority: (row["Priority"] as "low" | "medium" | "high") || "medium",
+          status: "active",
+          createdBy: localStorage.getItem("userEmail") || "",
+          createdAt: new Date().toISOString().split('T')[0]
+        };
+        successful.push(task);
+      } catch (error) {
+        errors.push({ row: index + 1, error: "Invalid data format" });
+      }
+    });
+
+    setTasks(prev => [...prev, ...successful]);
+    
+    return {
+      successful: successful.length,
+      failed: errors.length,
+      errors
+    };
+  };
+
+  const handleExport = () => {
+    const csvContent = [
+      ["Task Name", "Description", "Team", "Estimated Time (mins)", "Priority", "Status", "Created By", "Created Date"],
+      ...tasks.map(task => [
+        task.name, task.description, task.team, task.estimatedTime.toString(), 
+        task.priority, task.status, task.createdBy, task.createdAt
+      ])
+    ].map(row => row.join(",")).join("\n");
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tasks.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const bulkUploadValidation = {
+    "Task Name": (value: string) => value.length < 2 ? "Task name too short" : null,
+    "Estimated Time (mins)": (value: string) => {
+      const num = parseInt(value);
+      return isNaN(num) || num <= 0 ? "Must be a positive number" : null;
+    },
+    "Priority": (value: string) => !["low", "medium", "high"].includes(value) ? "Priority must be low, medium, or high" : null,
+    "Team": (value: string) => !teams.includes(value) ? `Team must be one of: ${teams.join(", ")}` : null
+  };
+
+  const sampleData = [
+    {
+      "Task Name": "Customer Support Call",
+      "Description": "Handle customer inquiries and provide support",
+      "Team": "Support",
+      "Estimated Time (mins)": "15",
+      "Priority": "medium"
+    }
+  ];
+
+  if (showBulkUpload) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-surface to-surface-elevated p-6">
+        <BulkUpload
+          title="Bulk Upload Tasks"
+          templateColumns={["Task Name", "Description", "Team", "Estimated Time (mins)", "Priority"]}
+          sampleData={sampleData}
+          onUpload={handleBulkUploadData}
+          onClose={() => setShowBulkUpload(false)}
+          validationRules={bulkUploadValidation}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-surface to-surface-elevated">
@@ -240,13 +327,23 @@ const Tasks = () => {
               </Button>
             )}
             {canManageTasks && (
-              <Button 
-                onClick={handleAddTask}
-                className="bg-primary hover:bg-primary/90"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Task
-              </Button>
+              <>
+                <Button variant="outline" onClick={() => setShowBulkUpload(true)}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Bulk Upload
+                </Button>
+                <Button variant="outline" onClick={handleExport}>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export
+                </Button>
+                <Button 
+                  onClick={handleAddTask}
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Task
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -264,14 +361,14 @@ const Tasks = () => {
               />
             </div>
           </div>
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <Select value={filterTeam} onValueChange={setFilterTeam}>
             <SelectTrigger className="w-48 bg-surface border-border">
-              <SelectValue placeholder="Filter by category" />
+              <SelectValue placeholder="Filter by team" />
             </SelectTrigger>
             <SelectContent className="bg-surface border-border z-50">
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map(category => (
-                <SelectItem key={category} value={category}>{category}</SelectItem>
+              <SelectItem value="all">All Teams</SelectItem>
+              {teams.map(team => (
+                <SelectItem key={team} value={team}>{team}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -308,7 +405,7 @@ const Tasks = () => {
                     )}
                     <th className="p-3 text-left font-semibold">Task Name</th>
                     <th className="p-3 text-left font-semibold">Description</th>
-                    <th className="p-3 text-left font-semibold">Category</th>
+                    <th className="p-3 text-left font-semibold">Team</th>
                     <th className="p-3 text-left font-semibold">Est. Time</th>
                     <th className="p-3 text-left font-semibold">Priority</th>
                     <th className="p-3 text-left font-semibold">Status</th>
@@ -353,20 +450,20 @@ const Tasks = () => {
                       <td className="p-3">
                         {editingTask === task.id ? (
                           <Select 
-                            value={editingData.category || task.category}
-                            onValueChange={(value) => setEditingData(prev => ({ ...prev, category: value }))}
+                            value={editingData.team || task.team}
+                            onValueChange={(value) => setEditingData(prev => ({ ...prev, team: value }))}
                           >
                             <SelectTrigger className="bg-surface border-border h-8 w-32">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="bg-surface border-border z-50">
-                              {categories.map(category => (
-                                <SelectItem key={category} value={category}>{category}</SelectItem>
+                              {teams.map(team => (
+                                <SelectItem key={team} value={team}>{team}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         ) : (
-                          <Badge variant="outline">{task.category}</Badge>
+                          <Badge variant="outline">{task.team}</Badge>
                         )}
                       </td>
                       <td className="p-3">
@@ -483,7 +580,7 @@ const Tasks = () => {
                 <AlertTriangle className="w-12 h-12 text-foreground-muted mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-foreground mb-2">No Tasks Found</h3>
                 <p className="text-foreground-muted">
-                  {searchTerm || filterCategory !== "all" 
+                  {searchTerm || filterTeam !== "all" 
                     ? "Try adjusting your search or filter criteria"
                     : "Get started by adding your first task"
                   }

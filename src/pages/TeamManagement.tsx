@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Plus, Search, Edit, Trash2, Users, Upload, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import BulkUpload from "@/components/BulkUpload";
 
 interface Employee {
   id: string;
@@ -188,11 +189,38 @@ const TeamManagement = () => {
     });
   };
 
-  const handleBulkUpload = () => {
-    toast({
-      title: "Bulk Upload",
-      description: "CSV/Excel upload functionality would be implemented here"
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+
+  const handleBulkUploadData = async (data: Record<string, string>[]): Promise<any> => {
+    const successful: Employee[] = [];
+    const errors: any[] = [];
+
+    data.forEach((row, index) => {
+      try {
+        const employee: Employee = {
+          id: Date.now().toString() + index,
+          employeeId: row["Employee ID"] || "",
+          name: row["Name"] || "",
+          email: row["Email"] || "",
+          role: (row["Role"] as "team-member" | "sme" | "admin") || "team-member",
+          team: row["Team"] || "",
+          status: "active",
+          joinDate: new Date().toISOString().split('T')[0],
+          lastActive: new Date().toISOString().split('T')[0]
+        };
+        successful.push(employee);
+      } catch (error) {
+        errors.push({ row: index + 1, error: "Invalid data format" });
+      }
     });
+
+    setEmployees(prev => [...prev, ...successful]);
+    
+    return {
+      successful: successful.length,
+      failed: errors.length,
+      errors
+    };
   };
 
   const handleExportData = () => {
@@ -234,6 +262,40 @@ const TeamManagement = () => {
     return roleMap[role as keyof typeof roleMap] || role;
   };
 
+  const bulkUploadValidation = {
+    "Employee ID": (value: string) => 
+      employees.some(emp => emp.employeeId === value) ? "Employee ID already exists" : null,
+    "Email": (value: string) => !value.includes("@") ? "Invalid email format" : null,
+    "Role": (value: string) => !["team-member", "sme", "admin"].includes(value) ? "Role must be team-member, sme, or admin" : null,
+    "Team": (value: string) => !teams.includes(value) ? `Team must be one of: ${teams.join(", ")}` : null
+  };
+
+  const sampleData = [
+    {
+      "Employee ID": "EMP006",
+      "Name": "John Doe",
+      "Email": "john.doe@company.com",
+      "Role": "team-member",
+      "Team": "Support",
+      "Password": "tempPassword123"
+    }
+  ];
+
+  if (showBulkUpload) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-background via-surface to-surface-elevated p-6">
+        <BulkUpload
+          title="Bulk Upload Team Members"
+          templateColumns={["Employee ID", "Name", "Email", "Role", "Team", "Password"]}
+          sampleData={sampleData}
+          onUpload={handleBulkUploadData}
+          onClose={() => setShowBulkUpload(false)}
+          validationRules={bulkUploadValidation}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-surface to-surface-elevated">
       <div className="container mx-auto p-6">
@@ -254,7 +316,7 @@ const TeamManagement = () => {
           <div className="flex gap-2">
             {userRole === "super-user" && (
               <>
-                <Button variant="outline" onClick={handleBulkUpload}>
+                <Button variant="outline" onClick={() => setShowBulkUpload(true)}>
                   <Upload className="w-4 h-4 mr-2" />
                   Bulk Upload
                 </Button>

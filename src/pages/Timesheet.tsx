@@ -218,21 +218,13 @@ const Timesheet = () => {
         {/* Timesheet Rows */}
         <Card className="shadow-soft border-border">
           <CardHeader>
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <TimerIcon className="w-5 h-5" />
-                  Task Entries
-                </CardTitle>
-                <CardDescription>
-                  Track time for each task individually
-                </CardDescription>
-              </div>
-              <Button onClick={addNewRow} variant="outline" size="sm">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Row
-              </Button>
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              <TimerIcon className="w-5 h-5" />
+              Task Entries
+            </CardTitle>
+            <CardDescription>
+              Track time for each task individually
+            </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <div className="space-y-4 p-6">
@@ -253,6 +245,18 @@ const Timesheet = () => {
                   }}
                 />
               ))}
+              
+              {/* Add Row Button at Bottom */}
+              <div className="mt-6 pt-4 border-t border-border">
+                <Button 
+                  onClick={addNewRow} 
+                  className="w-full bg-primary hover:bg-primary/90 shadow-soft"
+                  size="lg"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add New Row
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
