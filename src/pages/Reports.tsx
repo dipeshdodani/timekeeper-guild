@@ -29,7 +29,51 @@ const Reports = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Sample data for reports
+  // Sample data for reports with team structure
+  const teamsData = {
+    "all": {
+      name: "All Teams",
+      employees: [
+        { id: "EMP001", name: "John Smith", team: "support-alpha" },
+        { id: "EMP002", name: "Sarah Johnson", team: "support-alpha" },
+        { id: "EMP003", name: "Mike Wilson", team: "support-beta" },
+        { id: "EMP004", name: "Lisa Chen", team: "support-beta" },
+        { id: "EMP005", name: "David Brown", team: "development" },
+        { id: "EMP006", name: "Emily Davis", team: "development" },
+        { id: "EMP007", name: "Alex White", team: "qa" },
+        { id: "EMP008", name: "Jessica Green", team: "qa" }
+      ]
+    },
+    "support-alpha": {
+      name: "Support Team Alpha",
+      employees: [
+        { id: "EMP001", name: "John Smith", team: "support-alpha" },
+        { id: "EMP002", name: "Sarah Johnson", team: "support-alpha" }
+      ]
+    },
+    "support-beta": {
+      name: "Support Team Beta", 
+      employees: [
+        { id: "EMP003", name: "Mike Wilson", team: "support-beta" },
+        { id: "EMP004", name: "Lisa Chen", team: "support-beta" }
+      ]
+    },
+    "development": {
+      name: "Development Team",
+      employees: [
+        { id: "EMP005", name: "David Brown", team: "development" },
+        { id: "EMP006", name: "Emily Davis", team: "development" }
+      ]
+    },
+    "qa": {
+      name: "QA Team",
+      employees: [
+        { id: "EMP007", name: "Alex White", team: "qa" },
+        { id: "EMP008", name: "Jessica Green", team: "qa" }
+      ]
+    }
+  };
+
   const sampleReportData = {
     timeSummary: {
       totalHours: 168.5,
@@ -43,13 +87,34 @@ const Reports = () => {
       { name: "Documentation", hours: 32.8, percentage: 19 },
       { name: "Training", hours: 28.0, percentage: 17 },
       { name: "Meetings", hours: 24.0, percentage: 14 }
-    ],
-    employees: [
-      { id: "EMP001", name: "John Smith", totalHours: 42.5, tasks: 18 },
-      { id: "EMP002", name: "Sarah Johnson", totalHours: 38.2, tasks: 15 },
-      { id: "EMP003", name: "Mike Wilson", totalHours: 45.8, tasks: 22 },
-      { id: "EMP004", name: "Lisa Chen", totalHours: 42.0, tasks: 16 }
     ]
+  };
+
+  // Get filtered employees based on selected team
+  const getFilteredEmployees = () => {
+    const teamData = teamsData[selectedTeam as keyof typeof teamsData];
+    return teamData ? teamData.employees : [];
+  };
+
+  // Get filtered report data based on selections
+  const getFilteredReportData = () => {
+    const employees = getFilteredEmployees();
+    let filteredEmployees = employees;
+
+    // Further filter by specific employee if selected
+    if (selectedEmployee !== "all") {
+      filteredEmployees = employees.filter(emp => emp.id === selectedEmployee);
+    }
+
+    // Mock filtered metrics (in real app, this would come from API)
+    const employeeMetrics = filteredEmployees.map(emp => ({
+      id: emp.id,
+      name: emp.name,
+      totalHours: 40 + Math.random() * 10, // Mock hours
+      tasks: 15 + Math.floor(Math.random() * 10) // Mock task count
+    }));
+
+    return employeeMetrics;
   };
 
   const handleDateRangeChange = (value: string, startDate?: Date, endDate?: Date) => {
@@ -93,9 +158,10 @@ const Reports = () => {
         filename = `task_breakdown_${dateRangeStr}_${timestamp}.csv`;
         break;
       case "employee-summary":
+        const filteredEmployees = getFilteredReportData();
         csvContent = [
           ["Employee ID", "Name", "Total Hours", "Tasks Completed"],
-          ...sampleReportData.employees.map(emp => [emp.id, emp.name, emp.totalHours, emp.tasks])
+          ...filteredEmployees.map(emp => [emp.id, emp.name, emp.totalHours, emp.tasks])
         ].map(row => row.join(",")).join("\n");
         filename = `employee_summary_${dateRangeStr}_${timestamp}.csv`;
         break;
@@ -160,16 +226,17 @@ const Reports = () => {
               </div>
               <div>
                 <Label htmlFor="team">Team</Label>
-                <Select value={selectedTeam} onValueChange={setSelectedTeam}>
+                <Select value={selectedTeam} onValueChange={(value) => {
+                  setSelectedTeam(value);
+                  setSelectedEmployee("all"); // Reset employee when team changes
+                }}>
                   <SelectTrigger className="bg-surface border-border">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Teams</SelectItem>
-                    <SelectItem value="support-alpha">Support Team Alpha</SelectItem>
-                    <SelectItem value="support-beta">Support Team Beta</SelectItem>
-                    <SelectItem value="development">Development Team</SelectItem>
-                    <SelectItem value="qa">QA Team</SelectItem>
+                    {Object.entries(teamsData).map(([key, team]) => (
+                      <SelectItem key={key} value={key}>{team.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -181,7 +248,7 @@ const Reports = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Employees</SelectItem>
-                    {sampleReportData.employees.map(emp => (
+                    {getFilteredEmployees().map(emp => (
                       <SelectItem key={emp.id} value={emp.id}>{emp.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -346,11 +413,11 @@ const Reports = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {sampleReportData.employees.map((employee, index) => (
+                  {getFilteredReportData().map((employee, index) => (
                     <tr key={index} className="border-b border-border">
                       <td className="py-2">{employee.id}</td>
                       <td className="py-2">{employee.name}</td>
-                      <td className="py-2">{employee.totalHours}h</td>
+                      <td className="py-2">{employee.totalHours.toFixed(1)}h</td>
                       <td className="py-2">{employee.tasks}</td>
                       <td className="py-2">{(employee.totalHours / 5).toFixed(1)}h</td>
                     </tr>
@@ -378,8 +445,10 @@ const Reports = () => {
               <div className="text-sm text-foreground-muted">Utilization</div>
             </Card>
             <Card className="p-4 bg-surface border-border">
-              <div className="text-2xl font-bold text-primary">{sampleReportData.employees.length}</div>
-              <div className="text-sm text-foreground-muted">Active Employees</div>
+              <div className="text-2xl font-bold text-primary">{getFilteredReportData().length}</div>
+              <div className="text-sm text-foreground-muted">
+                {selectedTeam === "all" ? "Total Employees" : `${teamsData[selectedTeam as keyof typeof teamsData]?.name} Members`}
+              </div>
             </Card>
           </div>
         </div>

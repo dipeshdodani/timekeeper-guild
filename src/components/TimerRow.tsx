@@ -172,13 +172,13 @@ const TimerRow: React.FC<TimerRowProps> = ({
   };
 
   return (
-    <Card className="mb-4 shadow-soft border-border">
-      <CardContent className="p-6">
-        <div className="space-y-4">
-          {/* Task Info Section */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <Badge variant={getStatusBadgeVariant(row.status)} className="text-xs">
+    <Card className="mb-2 shadow-sm border-border">
+      <CardContent className="p-3">
+        <div className="space-y-3">
+          {/* Compact Task Info Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Badge variant={getStatusBadgeVariant(row.status)} className="text-xs py-0 px-2 h-5">
                 {row.status}
               </Badge>
               {taskAHT > 0 && (
@@ -188,123 +188,116 @@ const TimerRow: React.FC<TimerRowProps> = ({
                 </div>
               )}
             </div>
-            <div className="text-right">
-              <div className="text-sm font-mono text-foreground">
-                {formatTime(currentTime)}
+            <div className="flex items-center gap-4">
+              <div className="text-right">
+                <div className="text-sm font-mono text-foreground">
+                  {formatTime(currentTime)}
+                </div>
+                <div className="text-xs text-foreground-muted">
+                  Total: {getTotalTimeDisplay()}
+                </div>
               </div>
-              <div className="text-xs text-foreground-muted">
-                Total: {getTotalTimeDisplay()}
+              {/* Compact Timer Controls */}
+              <div className="flex gap-1">
+                <Button
+                  size="sm"
+                  onClick={startTimer}
+                  disabled={row.isRunning && !row.isPaused}
+                  className="bg-success hover:bg-success/90 h-7 w-7 p-0"
+                >
+                  <Play className="w-3 h-3" />
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={pauseTimer}
+                  disabled={!row.isRunning}
+                  className="bg-warning hover:bg-warning/90 h-7 w-7 p-0"
+                >
+                  <Pause className="w-3 h-3" />
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={stopTimer}
+                  disabled={!row.isRunning && !row.isPaused}
+                  variant="outline"
+                  className="h-7 w-7 p-0"
+                >
+                  <Square className="w-3 h-3" />
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => onDelete(row.id)}
+                  variant="destructive"
+                  className="h-7 w-7 p-0"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </Button>
               </div>
             </div>
           </div>
 
-          {/* Timer Controls */}
-          <div className="flex justify-center gap-2 mb-4">
-            <Button
-              size="sm"
-              onClick={startTimer}
-              disabled={row.isRunning && !row.isPaused}
-              className="bg-success hover:bg-success/90"
-            >
-              <Play className="w-4 h-4" />
-            </Button>
-            
-            <Button
-              size="sm"
-              onClick={pauseTimer}
-              disabled={!row.isRunning}
-              className="bg-warning hover:bg-warning/90"
-            >
-              <Pause className="w-4 h-4" />
-            </Button>
-            
-            <Button
-              size="sm"
-              onClick={stopTimer}
-              disabled={!row.isRunning && !row.isPaused}
-              variant="outline"
-            >
-              <Square className="w-4 h-4" />
-            </Button>
-            
-            <Button
-              size="sm"
-              onClick={() => onDelete(row.id)}
-              variant="destructive"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
-
-          {/* Form Fields Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Compact Form Fields Grid - Excel-like Row */}
+          <div className="grid grid-cols-6 lg:grid-cols-12 gap-2 text-xs">
             {/* Ticket Number */}
-            <div className="space-y-1">
-              <Label htmlFor="ticketNumber" className="text-xs font-medium text-foreground-muted">Ticket Number</Label>
+            <div className="col-span-1">
               <Input
-                id="ticketNumber"
                 value={row.ticketNumber}
                 onChange={(e) => onUpdate(row.id, { ticketNumber: e.target.value })}
-                placeholder="TKT-001"
-                className="bg-surface border-border h-8 text-xs"
+                placeholder="Ticket #"
+                className="h-7 text-xs border-border"
               />
             </div>
 
             {/* Stub Name */}
-            <div className="space-y-1">
-              <Label htmlFor="stubName" className="text-xs font-medium text-foreground-muted">Stub Name</Label>
+            <div className="col-span-1 lg:col-span-2">
               <SearchableSelect
                 value={row.stubName || ""}
                 onValueChange={(value) => onUpdate(row.id, { stubName: value })}
                 options={dropdownData.stubs}
-                placeholder="Select stub"
+                placeholder="Stub"
                 searchPlaceholder="Search stubs..."
-                className="h-8 text-xs"
+                className="h-7 text-xs"
               />
             </div>
 
             {/* University */}
-            <div className="space-y-1">
-              <Label htmlFor="university" className="text-xs font-medium text-foreground-muted">University</Label>
+            <div className="col-span-1 lg:col-span-2">
               <SearchableSelect
                 value={row.university || ""}
                 onValueChange={(value) => onUpdate(row.id, { university: value })}
                 options={dropdownData.universities}
-                placeholder="Select university"
+                placeholder="University"
                 searchPlaceholder="Search universities..."
-                className="h-8 text-xs"
+                className="h-7 text-xs"
               />
             </div>
 
             {/* Domain */}
-            <div className="space-y-1">
-              <Label htmlFor="domain" className="text-xs font-medium text-foreground-muted">Domain</Label>
+            <div className="col-span-1">
               <SearchableSelect
                 value={row.domain || ""}
                 onValueChange={(value) => onUpdate(row.id, { domain: value })}
                 options={dropdownData.domains}
-                placeholder="Select domain"
+                placeholder="Domain"
                 searchPlaceholder="Search domains..."
-                className="h-8 text-xs"
+                className="h-7 text-xs"
               />
             </div>
 
-            {/* Main Category Selection */}
-            <div className="space-y-1">
-              <Label htmlFor="category" className="text-xs font-medium text-foreground-muted">Main Category</Label>
+            {/* Main Category */}
+            <div className="col-span-1 lg:col-span-2">
               <SearchableSelect
                 value={row.category || ""}
                 onValueChange={(value) => onUpdate(row.id, { category: value, subCategory: "", taskName: "" })}
                 options={getUniqueCategories()}
-                placeholder="Select category"
+                placeholder="Category"
                 searchPlaceholder="Search categories..."
-                className="h-8 text-xs"
+                className="h-7 text-xs"
               />
             </div>
 
-            {/* Sub Category Selection */}
-            <div className="space-y-1">
-              <Label htmlFor="subCategory" className="text-xs font-medium text-foreground-muted">Sub Category</Label>
+            {/* Sub Category */}
+            <div className="col-span-1 lg:col-span-2">
               <SearchableSelect
                 value={row.subCategory || ""}
                 onValueChange={(value) => {
@@ -312,93 +305,83 @@ const TimerRow: React.FC<TimerRowProps> = ({
                   onUpdate(row.id, { subCategory: value, taskName });
                 }}
                 options={getSubCategoriesForCategory(row.category || "")}
-                placeholder="Select sub category"
+                placeholder="Sub Category"
                 searchPlaceholder="Search subcategories..."
                 disabled={!row.category}
-                className="h-8 text-xs"
+                className="h-7 text-xs"
               />
             </div>
 
-            {/* Client Type */}
-            <div className="space-y-1">
-              <Label htmlFor="clientType" className="text-xs font-medium text-foreground-muted">Client Type</Label>
+            {/* Client Type - Compact */}
+            <div className="col-span-1">
               <SearchableSelect
                 value={row.clientType || ""}
                 onValueChange={(value) => onUpdate(row.id, { clientType: value })}
                 options={dropdownData.clientTypes}
-                placeholder="Select client type"
+                placeholder="Client"
                 searchPlaceholder="Search client types..."
-                className="h-8 text-xs"
+                className="h-7 text-xs"
               />
             </div>
 
-            {/* Status */}
-            <div className="space-y-1">
-              <Label htmlFor="status" className="text-xs font-medium text-foreground-muted">Status</Label>
+            {/* Status - Compact */}
+            <div className="col-span-1">
               <Select 
                 value={row.status || ""} 
                 onValueChange={(value) => onUpdate(row.id, { status: value })}
               >
-                <SelectTrigger className="bg-surface border-border h-8 text-xs">
-                  <SelectValue placeholder="Select status" />
+                <SelectTrigger className="h-7 text-xs border-border">
+                  <SelectValue placeholder="Status" />
                 </SelectTrigger>
-                <SelectContent className="bg-surface border-border z-50">
+                <SelectContent className="z-50">
                   {dropdownData.statuses.map((status) => (
-                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                    <SelectItem key={status} value={status} className="text-xs">{status}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Ticket Count */}
-            <div className="space-y-1">
-              <Label htmlFor="ticketCount" className="text-xs font-medium text-foreground-muted">Ticket Count</Label>
+            {/* Data Count - Compact */}
+            <div className="col-span-1">
               <Input
-                id="ticketCount"
                 type="number"
                 value={row.ticketCount || ""}
                 onChange={(e) => onUpdate(row.id, { ticketCount: parseInt(e.target.value) || 0 })}
-                placeholder="0"
-                className="bg-surface border-border h-8 text-xs"
+                placeholder="Data #"
+                className="h-7 text-xs border-border"
               />
             </div>
 
-            {/* Case Count */}
-            <div className="space-y-1">
-              <Label htmlFor="caseCount" className="text-xs font-medium text-foreground-muted">Case Count</Label>
+            {/* Case Count - Compact */}
+            <div className="col-span-1">
               <Input
-                id="caseCount"
                 type="number"
                 value={row.caseCount || ""}
                 onChange={(e) => onUpdate(row.id, { caseCount: parseInt(e.target.value) || 0 })}
-                placeholder="0"
-                className="bg-surface border-border h-8 text-xs"
+                placeholder="Cases"
+                className="h-7 text-xs border-border"
               />
             </div>
 
-            {/* Received Date */}
-            <div className="space-y-1">
-              <Label htmlFor="receivedDate" className="text-xs font-medium text-foreground-muted">Received Date</Label>
+            {/* Received Date - Compact */}
+            <div className="col-span-1">
               <Input
-                id="receivedDate"
                 type="date"
                 value={row.receivedDate}
                 onChange={(e) => onUpdate(row.id, { receivedDate: e.target.value })}
-                className="bg-surface border-border h-8 text-xs"
+                className="h-7 text-xs border-border"
               />
             </div>
           </div>
 
-          {/* Comments */}
-          <div className="space-y-1">
-            <Label htmlFor="comments" className="text-xs font-medium text-foreground-muted">Comments</Label>
+          {/* Comments - Full Width */}
+          <div>
             <Textarea
-              id="comments"
               value={row.comments}
               onChange={(e) => onUpdate(row.id, { comments: e.target.value })}
-              placeholder="Add any additional notes..."
-              className="bg-surface border-border text-xs resize-none"
-              rows={2}
+              placeholder="Comments..."
+              className="text-xs resize-none border-border"
+              rows={1}
             />
           </div>
         </div>
