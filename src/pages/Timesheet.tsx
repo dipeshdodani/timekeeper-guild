@@ -213,6 +213,7 @@ const Timesheet = () => {
           breakTime={breakTime}
           isOnBreak={isOnBreak}
           targetHours={9}
+          workTargetHours={8}
         />
 
         {/* Timesheet Rows */}

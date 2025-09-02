@@ -16,13 +16,15 @@ interface AvailabilityTrackerProps {
   breakTime: number; // in seconds
   isOnBreak: boolean;
   targetHours: number;
+  workTargetHours?: number; // for remaining time calculation, defaults to 8
 }
 
 export const AvailabilityTracker = ({ 
   totalLoggedTime, 
   breakTime, 
   isOnBreak, 
-  targetHours 
+  targetHours,
+  workTargetHours = 8
 }: AvailabilityTrackerProps) => {
   const [currentBreakTime, setCurrentBreakTime] = useState(breakTime);
 
@@ -56,8 +58,9 @@ export const AvailabilityTracker = ({
   };
 
   const targetSeconds = targetHours * 3600;
+  const workTargetSeconds = workTargetHours * 3600;
   const progressPercentage = Math.min((totalLoggedTime / targetSeconds) * 100, 100);
-  const remainingTime = Math.max(targetSeconds - totalLoggedTime, 0);
+  const remainingTime = Math.max(workTargetSeconds - totalLoggedTime, 0);
   
   const getProgressColor = () => {
     if (progressPercentage >= 100) return "success";
@@ -195,14 +198,14 @@ export const AvailabilityTracker = ({
             <div className="flex items-center gap-2 text-primary">
               <TrendingUp className="w-4 h-4" />
               <span className="text-sm font-medium">
-                You're doing great! {formatTime(remainingTime)} remaining to reach your target
+                You're doing great! {formatTime(remainingTime)} remaining to reach your work target
               </span>
             </div>
           ) : (
             <div className="flex items-center gap-2 text-foreground-muted">
               <Target className="w-4 h-4" />
               <span className="text-sm font-medium">
-                Keep going! {formatTime(remainingTime)} left to complete your {targetHours}-hour target
+                Keep going! {formatTime(remainingTime)} left to complete your {workTargetHours}-hour work target
               </span>
             </div>
           )}
