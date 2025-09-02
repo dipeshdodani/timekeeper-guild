@@ -47,6 +47,8 @@ const Timesheet = () => {
     pauseTimer, 
     stopTimer, 
     stopAllTimers,
+    clearAllTimers,
+    cleanupOrphanedTimers,
     getTimer, 
     getCurrentTime, 
     hasActiveTimer, 
@@ -65,7 +67,12 @@ const Timesheet = () => {
     const savedData = localStorage.getItem(`timesheet-${new Date().toDateString()}`);
     if (savedData) {
       const parsed = JSON.parse(savedData);
-      setRows(parsed.rows || []);
+      const rows = parsed.rows || [];
+      setRows(rows);
+      
+      // Clean up orphaned timers that don't match current row IDs
+      const validRowIds = rows.map((row: TimesheetRow) => row.id);
+      cleanupOrphanedTimers(validRowIds);
     } else {
       // Initialize with one empty row
       addNewRow();
@@ -149,6 +156,9 @@ const Timesheet = () => {
       });
 
       saveSubmittedTimesheet(finalRows);
+      
+      // Clear all timer data after successful submission
+      clearAllTimers();
       
       toast({
         title: "Timesheet Submitted",

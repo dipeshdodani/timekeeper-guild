@@ -188,6 +188,25 @@ export const useGlobalTimer = () => {
     });
   }, [saveTimerState]);
 
+  // Clear all timer data (for post-submission cleanup)
+  const clearAllTimers = useCallback(() => {
+    const newState = { timers: [], lastSavedAt: new Date().toISOString() };
+    saveTimerState(newState);
+  }, [saveTimerState]);
+
+  // Clean up orphaned timers that don't match current row IDs
+  const cleanupOrphanedTimers = useCallback((validRowIds: string[]) => {
+    setTimerState(prev => {
+      const updatedTimers = prev.timers.filter(timer => validRowIds.includes(timer.id));
+      if (updatedTimers.length !== prev.timers.length) {
+        const newState = { ...prev, timers: updatedTimers, lastSavedAt: new Date().toISOString() };
+        saveTimerState(newState);
+        return newState;
+      }
+      return prev;
+    });
+  }, [saveTimerState]);
+
   // Clean up timer for deleted rows
   const removeTimer = useCallback((id: string) => {
     setTimerState(prev => {
@@ -203,6 +222,8 @@ export const useGlobalTimer = () => {
     pauseTimer,
     stopTimer,
     stopAllTimers,
+    clearAllTimers,
+    cleanupOrphanedTimers,
     getTimer,
     getCurrentTime,
     hasActiveTimer,
