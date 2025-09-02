@@ -79,14 +79,16 @@ const Reports = () => {
       totalHours: 168.5,
       billableHours: 145.2,
       avgDailyHours: 8.4,
-      utilizationRate: 86.2
+      utilizationRate: 86.2,
+      avgAHT: 32.5,
+      ahtEfficiency: 94.2
     },
     tasks: [
-      { name: "Customer Support", hours: 45.5, percentage: 27 },
-      { name: "Code Review", hours: 38.2, percentage: 23 },
-      { name: "Documentation", hours: 32.8, percentage: 19 },
-      { name: "Training", hours: 28.0, percentage: 17 },
-      { name: "Meetings", hours: 24.0, percentage: 14 }
+      { name: "Customer Support - Phone Support", hours: 45.5, percentage: 27, aht: 15, actualAvgTime: 14.2 },
+      { name: "Technical - Code Review", hours: 38.2, percentage: 23, aht: 30, actualAvgTime: 28.5 },
+      { name: "Content - Documentation", hours: 32.8, percentage: 19, aht: 45, actualAvgTime: 43.1 },
+      { name: "Customer Support - Email Support", hours: 28.0, percentage: 17, aht: 10, actualAvgTime: 9.8 },
+      { name: "Technical - Bug Fixing", hours: 24.0, percentage: 14, aht: 90, actualAvgTime: 87.3 }
     ]
   };
 
@@ -111,7 +113,9 @@ const Reports = () => {
       id: emp.id,
       name: emp.name,
       totalHours: 40 + Math.random() * 10, // Mock hours
-      tasks: 15 + Math.floor(Math.random() * 10) // Mock task count
+      tasks: 15 + Math.floor(Math.random() * 10), // Mock task count
+      avgAHT: 25 + Math.random() * 20, // Mock average AHT
+      ahtEfficiency: 85 + Math.random() * 15 // Mock AHT efficiency percentage
     }));
 
     return employeeMetrics;
@@ -160,8 +164,8 @@ const Reports = () => {
       case "employee-summary":
         const filteredEmployees = getFilteredReportData();
         csvContent = [
-          ["Employee ID", "Name", "Total Hours", "Tasks Completed"],
-          ...filteredEmployees.map(emp => [emp.id, emp.name, emp.totalHours, emp.tasks])
+          ["Employee ID", "Name", "Total Hours", "Tasks Completed", "Avg AHT", "AHT Efficiency"],
+          ...filteredEmployees.map(emp => [emp.id, emp.name, emp.totalHours.toFixed(1), emp.tasks, emp.avgAHT.toFixed(1), `${emp.ahtEfficiency.toFixed(1)}%`])
         ].map(row => row.join(",")).join("\n");
         filename = `employee_summary_${dateRangeStr}_${timestamp}.csv`;
         break;
@@ -358,6 +362,14 @@ const Reports = () => {
                   <span className="text-foreground-muted">Utilization Rate:</span>
                   <span className="font-semibold text-success">{sampleReportData.timeSummary.utilizationRate}%</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-foreground-muted">Avg AHT:</span>
+                  <span className="font-semibold">{sampleReportData.timeSummary.avgAHT}min</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-foreground-muted">AHT Efficiency:</span>
+                  <span className="font-semibold text-success">{sampleReportData.timeSummary.ahtEfficiency}%</span>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -370,18 +382,27 @@ const Reports = () => {
             <CardContent>
               <div className="space-y-3">
                 {sampleReportData.tasks.map((task, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-foreground">{task.name}</span>
-                        <span className="text-foreground-muted">{task.hours}h</span>
+                  <div key={index} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span className="text-foreground">{task.name}</span>
+                          <span className="text-foreground-muted">{task.hours}h</span>
+                        </div>
+                        <div className="w-full bg-muted rounded-full h-2">
+                          <div 
+                            className="bg-primary h-2 rounded-full" 
+                            style={{ width: `${task.percentage}%` }}
+                          ></div>
+                        </div>
                       </div>
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div 
-                          className="bg-primary h-2 rounded-full" 
-                          style={{ width: `${task.percentage}%` }}
-                        ></div>
-                      </div>
+                    </div>
+                    <div className="flex justify-between text-xs text-foreground-muted pl-2">
+                      <span>Target AHT: {task.aht}min</span>
+                      <span>Actual Avg: {task.actualAvgTime}min</span>
+                      <span className={task.actualAvgTime <= task.aht ? 'text-success' : 'text-destructive'}>
+                        {task.actualAvgTime <= task.aht ? '✓' : '⚠'}
+                      </span>
                     </div>
                   </div>
                 ))}
@@ -409,7 +430,8 @@ const Reports = () => {
                     <th className="text-left py-2">Name</th>
                     <th className="text-left py-2">Total Hours</th>
                     <th className="text-left py-2">Tasks Completed</th>
-                    <th className="text-left py-2">Avg Hours/Day</th>
+                    <th className="text-left py-2">Avg AHT</th>
+                    <th className="text-left py-2">AHT Efficiency</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -419,7 +441,12 @@ const Reports = () => {
                       <td className="py-2">{employee.name}</td>
                       <td className="py-2">{employee.totalHours.toFixed(1)}h</td>
                       <td className="py-2">{employee.tasks}</td>
-                      <td className="py-2">{(employee.totalHours / 5).toFixed(1)}h</td>
+                      <td className="py-2">{employee.avgAHT.toFixed(1)}min</td>
+                      <td className="py-2">
+                        <span className={employee.ahtEfficiency >= 90 ? 'text-success' : employee.ahtEfficiency >= 80 ? 'text-warning' : 'text-destructive'}>
+                          {employee.ahtEfficiency.toFixed(1)}%
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

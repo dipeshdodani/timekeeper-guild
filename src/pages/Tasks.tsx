@@ -11,11 +11,13 @@ import { ArrowLeft, Plus, Search, Edit, Trash2, CheckCircle, Clock, AlertTriangl
 import { useToast } from "@/hooks/use-toast";
 import BulkUpload from "@/components/BulkUpload";
 import { ColumnManager, ColumnManagerTrigger, ColumnConfig } from "@/components/ColumnManager";
+import { updateTasks } from "@/utils/dropdownStorage";
 
 interface Task {
   id: string;
   category: string;
   subCategory: string;
+  aht: number; // Average Handle Time in minutes
   team: string;
   status: "active" | "inactive";
   type: "direct" | "indirect";
@@ -40,6 +42,7 @@ const Tasks = () => {
   const [columns, setColumns] = useState<ColumnConfig[]>([
     { key: "category", label: "Category", visible: true },
     { key: "subCategory", label: "Sub Category", visible: true },
+    { key: "aht", label: "AHT", visible: true },
     { key: "team", label: "Team", visible: true },
     { key: "status", label: "Status", visible: true },
     { key: "type", label: "Type", visible: true },
@@ -67,6 +70,7 @@ const Tasks = () => {
         id: "1",
         category: "Customer Support",
         subCategory: "Phone Support",
+        aht: 15,
         team: "Support",
         status: "active",
         type: "direct",
@@ -79,57 +83,61 @@ const Tasks = () => {
       },
       {
         id: "2", 
-        category: "CI Operations",
-        subCategory: "Pipeline Configuration",
+        category: "Customer Support",
+        subCategory: "Email Support",
+        aht: 10,
         team: "All Teams",
         status: "active",
-        type: "indirect",
+        type: "direct",
         // Backend fields
-        description: "Set up and maintain continuous integration pipelines",
-        estimatedTime: 45,
-        priority: "high",
+        description: "Handle email inquiries and provide support",
+        estimatedTime: 10,
+        priority: "medium",
         createdBy: "sme@company.com",
         createdAt: "2024-01-10"
       },
       {
         id: "3",
-        category: "Database Management",
-        subCategory: "Migration Scripts",
+        category: "Technical",
+        subCategory: "Code Review",
+        aht: 30,
         team: "Migration",
         status: "active",
         type: "direct",
         // Backend fields
-        description: "Create and execute database migration procedures",
-        estimatedTime: 60,
+        description: "Review code and provide feedback",
+        estimatedTime: 30,
         priority: "high",
         createdBy: "admin@company.com",
         createdAt: "2024-01-12"
       },
       {
         id: "4",
-        category: "System Configuration",
-        subCategory: "Environment Setup",
+        category: "Technical",
+        subCategory: "Bug Fixing",
+        aht: 90,
         team: "All Teams",
         status: "active",
         type: "indirect",
         // Backend fields
-        description: "Configure system environments and settings",
-        estimatedTime: 30,
-        priority: "medium",
+        description: "Fix bugs and issues in the system",
+        estimatedTime: 90,
+        priority: "high",
         createdBy: "sme@company.com",
         createdAt: "2024-01-08"
       },
       {
         id: "5",
-        category: "Platform Integration",
-        subCategory: "Exxat One",
+        category: "Content",
+        subCategory: "Documentation",
+        aht: 45,
         team: "Exxat One",
         status: "active",
         type: "direct",
         // Backend fields
-        description: "Integrate with Exxat One platform systems",
-        estimatedTime: 90,
-        priority: "high",
+        description: "Create and maintain documentation",
+        estimatedTime: 45,
+        priority: "medium",
         createdBy: "admin@company.com",
         createdAt: "2024-01-14"
       }
@@ -151,6 +159,7 @@ const Tasks = () => {
       id: Date.now().toString(),
       category: "New Category",
       subCategory: "New Sub Category",
+      aht: 30,
       team: "Support",
       status: "active",
       type: "direct",
@@ -175,11 +184,13 @@ const Tasks = () => {
   const handleSaveTask = () => {
     if (!editingTask || !editingData.category) return;
 
-    setTasks(prev => prev.map(task => 
+    const updatedTasks = tasks.map(task => 
       task.id === editingTask 
         ? { ...task, ...editingData }
         : task
-    ));
+    );
+    setTasks(updatedTasks);
+    syncTasksToDropdownStorage(updatedTasks);
     
     setEditingTask(null);
     setEditingData({});
@@ -204,7 +215,9 @@ const Tasks = () => {
   };
 
   const deleteTask = (taskId: string) => {
-    setTasks(prev => prev.filter(task => task.id !== taskId));
+    const updatedTasks = tasks.filter(task => task.id !== taskId);
+    setTasks(updatedTasks);
+    syncTasksToDropdownStorage(updatedTasks);
     toast({
       title: "Task Deleted",
       description: "Task has been removed successfully"
@@ -214,7 +227,9 @@ const Tasks = () => {
   const handleBulkDelete = () => {
     if (selectedTasks.length === 0) return;
     
-    setTasks(prev => prev.filter(task => !selectedTasks.includes(task.id)));
+    const updatedTasks = tasks.filter(task => !selectedTasks.includes(task.id));
+    setTasks(updatedTasks);
+    syncTasksToDropdownStorage(updatedTasks);
     setSelectedTasks([]);
     
     toast({
@@ -250,6 +265,21 @@ const Tasks = () => {
 
   const teams = ["Support", "CI", "Migration", "Config", "Exxat One", "All Teams"];
   
+  // Sync tasks to dropdown storage for timesheet integration
+  const syncTasksToDropdownStorage = (taskList: Task[]) => {
+    const tasksWithAHT = taskList.map(task => ({
+      category: task.category,
+      subCategory: task.subCategory,
+      aht: task.aht
+    }));
+    updateTasks(tasksWithAHT);
+  };
+
+  // Sync tasks whenever tasks change
+  useEffect(() => {
+    syncTasksToDropdownStorage(tasks);
+  }, [tasks]);
+  
   const handleColumnsChange = (newColumns: ColumnConfig[]) => {
     setColumns(newColumns);
     localStorage.setItem("taskColumns", JSON.stringify(newColumns));
@@ -277,6 +307,19 @@ const Tasks = () => {
           />
         ) : (
           <div className="font-medium text-foreground">{task.subCategory}</div>
+        );
+
+      case "aht":
+        return editingTask === task.id ? (
+          <Input
+            type="number"
+            value={editingData.aht || ""}
+            onChange={(e) => setEditingData(prev => ({ ...prev, aht: parseInt(e.target.value) || 0 }))}
+            className="bg-surface border-border h-8 w-20"
+            placeholder="mins"
+          />
+        ) : (
+          <div className="font-medium text-foreground">{task.aht} min</div>
         );
 
       case "team":
@@ -343,13 +386,14 @@ const Tasks = () => {
           id: Date.now().toString() + index,
           category: row["Category"] || "",
           subCategory: row["Sub Category"] || "",
+          aht: parseInt(row["AHT"]) || 0,
           team: row["Team"] || "",
           status: "active",
           type: (row["Type"] as "direct" | "indirect") || "direct",
           // Backend fields
-          description: row["Description"] || "",
-          estimatedTime: parseInt(row["Estimated Time (mins)"]) || 30,
-          priority: (row["Priority"] as "low" | "medium" | "high") || "medium",
+          description: "",
+          estimatedTime: parseInt(row["AHT"]) || 0,
+          priority: "medium",
           createdBy: localStorage.getItem("userEmail") || "",
           createdAt: new Date().toISOString().split('T')[0]
         };
@@ -360,6 +404,7 @@ const Tasks = () => {
     });
 
     setTasks(prev => [...prev, ...successful]);
+    syncTasksToDropdownStorage([...tasks, ...successful]);
     
     return {
       successful: successful.length,
@@ -370,9 +415,9 @@ const Tasks = () => {
 
   const handleExport = () => {
     const csvContent = [
-      ["Category", "Sub Category", "Team", "Status", "Type"],
+      ["Category", "Sub Category", "AHT", "Team", "Status", "Type"],
       ...tasks.map(task => [
-        task.category, task.subCategory, task.team, task.status, task.type
+        task.category, task.subCategory, task.aht, task.team, task.status, task.type
       ])
     ].map(row => row.join(",")).join("\n");
 
@@ -388,6 +433,10 @@ const Tasks = () => {
   const bulkUploadValidation = {
     "Category": (value: string) => value.length < 2 ? "Category name too short" : null,
     "Sub Category": (value: string) => value.length < 2 ? "Sub category name too short" : null,
+    "AHT": (value: string) => {
+      const num = parseInt(value);
+      return isNaN(num) || num <= 0 ? "AHT must be a positive number" : null;
+    },
     "Team": (value: string) => !teams.includes(value) ? `Team must be one of: ${teams.join(", ")}` : null,
     "Type": (value: string) => !["direct", "indirect"].includes(value) ? "Type must be direct or indirect" : null
   };
@@ -396,6 +445,7 @@ const Tasks = () => {
     {
       "Category": "Customer Support",
       "Sub Category": "Phone Support",
+      "AHT": "15",
       "Team": "Support",
       "Type": "direct"
     }
@@ -406,7 +456,7 @@ const Tasks = () => {
       <div className="min-h-screen bg-gradient-to-br from-background via-surface to-surface-elevated p-6">
         <BulkUpload
           title="Bulk Upload Tasks"
-          templateColumns={["Category", "Sub Category", "Team", "Type"]}
+          templateColumns={["Category", "Sub Category", "AHT", "Team", "Type"]}
           sampleData={sampleData}
           onUpload={handleBulkUploadData}
           onClose={() => setShowBulkUpload(false)}
