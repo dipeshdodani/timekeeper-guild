@@ -97,10 +97,32 @@ export const useGlobalTimer = () => {
     });
   }, [saveTimerState]);
 
-  // Stop timer (same as pause - we're removing reset functionality)
+  // Stop timer (completely stops and resets the timer)
   const stopTimer = useCallback((id: string) => {
-    pauseTimer(id);
-  }, [pauseTimer]);
+    setTimerState(prev => {
+      const updatedTimers = prev.timers.map(timer => {
+        if (timer.id === id) {
+          // If timer is running, add final elapsed time, then stop completely
+          let finalTime = timer.totalTime;
+          if (timer.isActive && timer.startTime) {
+            const elapsed = Math.floor((Date.now() - timer.startTime) / 1000);
+            finalTime = timer.totalTime + elapsed;
+          }
+          return { 
+            ...timer, 
+            isActive: false, 
+            startTime: null, 
+            totalTime: finalTime 
+          };
+        }
+        return timer;
+      });
+
+      const newState = { ...prev, timers: updatedTimers, lastSavedAt: new Date().toISOString() };
+      saveTimerState(newState);
+      return newState;
+    });
+  }, [saveTimerState]);
 
   // Get timer data for a specific ID
   const getTimer = useCallback((id: string): TimerState | null => {
@@ -143,6 +165,29 @@ export const useGlobalTimer = () => {
     });
   }, [saveTimerState]);
 
+  // Stop all active timers (for submit functionality)
+  const stopAllTimers = useCallback(() => {
+    const now = Date.now();
+    setTimerState(prev => {
+      const updatedTimers = prev.timers.map(timer => {
+        if (timer.isActive && timer.startTime) {
+          const elapsed = Math.floor((now - timer.startTime) / 1000);
+          return { 
+            ...timer, 
+            isActive: false, 
+            startTime: null, 
+            totalTime: timer.totalTime + elapsed 
+          };
+        }
+        return { ...timer, isActive: false, startTime: null };
+      });
+
+      const newState = { ...prev, timers: updatedTimers, lastSavedAt: new Date().toISOString() };
+      saveTimerState(newState);
+      return newState;
+    });
+  }, [saveTimerState]);
+
   // Clean up timer for deleted rows
   const removeTimer = useCallback((id: string) => {
     setTimerState(prev => {
@@ -157,6 +202,7 @@ export const useGlobalTimer = () => {
     startTimer,
     pauseTimer,
     stopTimer,
+    stopAllTimers,
     getTimer,
     getCurrentTime,
     hasActiveTimer,

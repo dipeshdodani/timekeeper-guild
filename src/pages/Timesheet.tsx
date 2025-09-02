@@ -46,6 +46,7 @@ const Timesheet = () => {
     startTimer, 
     pauseTimer, 
     stopTimer, 
+    stopAllTimers,
     getTimer, 
     getCurrentTime, 
     hasActiveTimer, 
@@ -134,11 +135,7 @@ const Timesheet = () => {
   const handleSubmit = () => {
     try {
       // Stop all active timers before submitting
-      rows.forEach(row => {
-        if (row.isActive) {
-          pauseTimer(row.id);
-        }
-      });
+      stopAllTimers();
 
       // Get final timer data and save submission
       const finalRows = rows.map(row => {
