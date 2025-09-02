@@ -29,11 +29,11 @@ const DEFAULT_DROPDOWN_DATA: DropdownData = {
     { name: "Administrative", description: "Administrative tasks", team: "Admin Team" }
   ],
   tasks: [
-    { name: "Customer Support", aht: 15, description: "Handle customer inquiries", category: "Support", domain: "Customer Service" },
-    { name: "Code Review", aht: 30, description: "Review and validate code submissions", category: "Technical", domain: "Computer Science" },
-    { name: "Documentation", aht: 45, description: "Create and update documentation", category: "Administrative", domain: "General" },
-    { name: "Training", aht: 60, description: "Conduct training sessions", category: "Education", domain: "General" },
-    { name: "Bug Fixing", aht: 90, description: "Identify and fix software bugs", category: "Technical", domain: "Computer Science" }
+    { name: "Customer Support", aht: 15 },
+    { name: "Code Review", aht: 30 },
+    { name: "Documentation", aht: 45 },
+    { name: "Training", aht: 60 },
+    { name: "Bug Fixing", aht: 90 }
   ]
 };
 

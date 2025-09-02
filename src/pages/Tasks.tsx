@@ -13,7 +13,8 @@ import BulkUpload from "@/components/BulkUpload";
 
 interface Task {
   id: string;
-  name: string;
+  category: string;
+  subCategory: string;
   description: string;
   team: string;
   estimatedTime: number;
@@ -47,7 +48,8 @@ const Tasks = () => {
     const sampleTasks: Task[] = [
       {
         id: "1",
-        name: "Customer Support Call",
+        category: "Customer Support",
+        subCategory: "Phone Support",
         description: "Handle customer inquiries and provide support",
         team: "Support",
         estimatedTime: 15,
@@ -58,7 +60,8 @@ const Tasks = () => {
       },
       {
         id: "2", 
-        name: "CI Pipeline Configuration",
+        category: "CI Operations",
+        subCategory: "Pipeline Configuration",
         description: "Set up and maintain continuous integration pipelines",
         team: "CI",
         estimatedTime: 45,
@@ -69,7 +72,8 @@ const Tasks = () => {
       },
       {
         id: "3",
-        name: "Database Migration Script",
+        category: "Database Management",
+        subCategory: "Migration Scripts",
         description: "Create and execute database migration procedures",
         team: "Migration",
         estimatedTime: 60,
@@ -80,7 +84,8 @@ const Tasks = () => {
       },
       {
         id: "4",
-        name: "Environment Configuration",
+        category: "System Configuration",
+        subCategory: "Environment Setup",
         description: "Configure system environments and settings",
         team: "Config",
         estimatedTime: 30,
@@ -91,7 +96,8 @@ const Tasks = () => {
       },
       {
         id: "5",
-        name: "Exxat One Integration",
+        category: "Platform Integration",
+        subCategory: "Exxat One",
         description: "Integrate with Exxat One platform systems",
         team: "Exxat One",
         estimatedTime: 90,
@@ -107,7 +113,8 @@ const Tasks = () => {
   const canManageTasks = userRole === "sme" || userRole === "admin" || userRole === "super-user";
 
   const filteredTasks = tasks.filter(task => {
-    const matchesSearch = task.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = task.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         task.subCategory.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          task.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTeam = filterTeam === "all" || task.team === filterTeam;
     return matchesSearch && matchesTeam;
@@ -116,7 +123,8 @@ const Tasks = () => {
   const handleAddTask = () => {
     const newTask: Task = {
       id: Date.now().toString(),
-      name: "New Task",
+      category: "New Category",
+      subCategory: "New Sub Category",
       description: "Task description",
       team: "Support",
       estimatedTime: 30,
@@ -137,7 +145,7 @@ const Tasks = () => {
   };
 
   const handleSaveTask = () => {
-    if (!editingTask || !editingData.name) return;
+    if (!editingTask || !editingData.category) return;
 
     setTasks(prev => prev.map(task => 
       task.id === editingTask 
@@ -222,7 +230,8 @@ const Tasks = () => {
       try {
         const task: Task = {
           id: Date.now().toString() + index,
-          name: row["Task Name"] || "",
+          category: row["Category"] || "",
+          subCategory: row["Sub Category"] || "",
           description: row["Description"] || "",
           team: row["Team"] || "",
           estimatedTime: parseInt(row["Estimated Time (mins)"]) || 30,
@@ -248,9 +257,9 @@ const Tasks = () => {
 
   const handleExport = () => {
     const csvContent = [
-      ["Task Name", "Description", "Team", "Estimated Time (mins)", "Priority", "Status", "Created By", "Created Date"],
+      ["Category", "Sub Category", "Description", "Team", "Estimated Time (mins)", "Priority", "Status", "Created By", "Created Date"],
       ...tasks.map(task => [
-        task.name, task.description, task.team, task.estimatedTime.toString(), 
+        task.category, task.subCategory, task.description, task.team, task.estimatedTime.toString(), 
         task.priority, task.status, task.createdBy, task.createdAt
       ])
     ].map(row => row.join(",")).join("\n");
@@ -265,7 +274,8 @@ const Tasks = () => {
   };
 
   const bulkUploadValidation = {
-    "Task Name": (value: string) => value.length < 2 ? "Task name too short" : null,
+    "Category": (value: string) => value.length < 2 ? "Category name too short" : null,
+    "Sub Category": (value: string) => value.length < 2 ? "Sub category name too short" : null,
     "Estimated Time (mins)": (value: string) => {
       const num = parseInt(value);
       return isNaN(num) || num <= 0 ? "Must be a positive number" : null;
@@ -276,7 +286,8 @@ const Tasks = () => {
 
   const sampleData = [
     {
-      "Task Name": "Customer Support Call",
+      "Category": "Customer Support",
+      "Sub Category": "Phone Support",
       "Description": "Handle customer inquiries and provide support",
       "Team": "Support",
       "Estimated Time (mins)": "15",
@@ -289,7 +300,7 @@ const Tasks = () => {
       <div className="min-h-screen bg-gradient-to-br from-background via-surface to-surface-elevated p-6">
         <BulkUpload
           title="Bulk Upload Tasks"
-          templateColumns={["Task Name", "Description", "Team", "Estimated Time (mins)", "Priority"]}
+          templateColumns={["Category", "Sub Category", "Description", "Team", "Estimated Time (mins)", "Priority"]}
           sampleData={sampleData}
           onUpload={handleBulkUploadData}
           onClose={() => setShowBulkUpload(false)}
@@ -403,7 +414,8 @@ const Tasks = () => {
                         />
                       </th>
                     )}
-                    <th className="p-3 text-left font-semibold">Task Name</th>
+                    <th className="p-3 text-left font-semibold">Category</th>
+                    <th className="p-3 text-left font-semibold">Sub Category</th>
                     <th className="p-3 text-left font-semibold">Description</th>
                     <th className="p-3 text-left font-semibold">Team</th>
                     <th className="p-3 text-left font-semibold">Est. Time</th>
@@ -428,12 +440,23 @@ const Tasks = () => {
                       <td className="p-3">
                         {editingTask === task.id ? (
                           <Input
-                            value={editingData.name || ""}
-                            onChange={(e) => setEditingData(prev => ({ ...prev, name: e.target.value }))}
+                            value={editingData.category || ""}
+                            onChange={(e) => setEditingData(prev => ({ ...prev, category: e.target.value }))}
                             className="bg-surface border-border h-8"
                           />
                         ) : (
-                          <div className="font-medium text-foreground">{task.name}</div>
+                          <div className="font-medium text-foreground">{task.category}</div>
+                        )}
+                      </td>
+                      <td className="p-3">
+                        {editingTask === task.id ? (
+                          <Input
+                            value={editingData.subCategory || ""}
+                            onChange={(e) => setEditingData(prev => ({ ...prev, subCategory: e.target.value }))}
+                            className="bg-surface border-border h-8"
+                          />
+                        ) : (
+                          <div className="font-medium text-foreground">{task.subCategory}</div>
                         )}
                       </td>
                       <td className="p-3 max-w-xs">

@@ -2,9 +2,6 @@
 export interface TaskWithAHT {
   name: string;
   aht: number; // in minutes
-  description?: string;
-  category?: string;
-  domain?: string;
 }
 
 export interface University {
@@ -79,9 +76,6 @@ export const DROPDOWN_TEMPLATES = {
   ],
   tasks: [
     { field: 'Task_Name', example: 'Customer Support' },
-    { field: 'AHT_Minutes', example: '15' },
-    { field: 'Description', example: 'Handle customer inquiries' },
-    { field: 'Category', example: 'Support' },
-    { field: 'Domain', example: 'Customer Service' }
+    { field: 'AHT_Minutes', example: '15' }
   ]
 };

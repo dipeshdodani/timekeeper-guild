@@ -114,10 +114,7 @@ const DropdownManagement = () => {
         case 'tasks':
           processedData = data.map(row => ({
             name: row.Task_Name,
-            aht: parseInt(row.AHT_Minutes) || 0,
-            description: row.Description || '',
-            category: row.Category || '',
-            domain: row.Domain || ''
+            aht: parseInt(row.AHT_Minutes) || 0
           }));
           updateTasks(processedData as TaskWithAHT[]);
           break;
@@ -179,8 +176,8 @@ const DropdownManagement = () => {
         
       case 'tasks':
         csvContent = [
-          ["Task_Name", "AHT_Minutes", "Description", "Category", "Domain"],
-          ...dropdownData.tasks.map(t => [t.name, t.aht.toString(), t.description || '', t.category || '', t.domain || ''])
+          ["Task_Name", "AHT_Minutes"],
+          ...dropdownData.tasks.map(t => [t.name, t.aht.toString()])
         ].map(row => row.join(",")).join("\n");
         filename = "tasks_export.csv";
         break;
@@ -270,7 +267,7 @@ const DropdownManagement = () => {
       description: 'Manage tasks with Average Handle Time (AHT) in minutes',
       icon: CheckSquare,
       data: dropdownData.tasks,
-      columns: ['Name', 'AHT (min)', 'Description', 'Category', 'Domain']
+      columns: ['Task Name', 'AHT (min)']
     }
   ];
 
@@ -424,9 +421,6 @@ const DropdownManagement = () => {
                                     <td className="p-3">
                                       <Badge variant="secondary">{item.aht}min</Badge>
                                     </td>
-                                    <td className="p-3">{item.description}</td>
-                                    <td className="p-3">{item.category}</td>
-                                    <td className="p-3">{item.domain}</td>
                                   </>
                                 )}
                               </tr>
