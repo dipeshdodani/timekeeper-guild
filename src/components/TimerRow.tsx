@@ -237,7 +237,7 @@ const TimerRow: React.FC<TimerRowProps> = ({
           </div>
 
           {/* Compact Form Fields Grid - Excel-like Row */}
-          <div className="grid grid-cols-6 lg:grid-cols-12 gap-2 text-xs">
+          <div className="grid grid-cols-6 lg:grid-cols-11 gap-2 text-xs">
             {/* Ticket Number */}
             <div className="col-span-1">
               <Input
@@ -352,14 +352,14 @@ const TimerRow: React.FC<TimerRowProps> = ({
               />
             </div>
 
-            {/* Case Count - Compact */}
+            {/* Default AHT/Record - Display Only */}
             <div className="col-span-1">
               <Input
-                type="number"
-                value={row.caseCount || ""}
-                onChange={(e) => onUpdate(row.id, { caseCount: parseInt(e.target.value) || 0 })}
-                placeholder="Cases"
-                className="h-7 text-xs border-border"
+                value={taskAHT > 0 ? `${taskAHT}min` : "N/A"}
+                readOnly
+                placeholder="AHT"
+                className="h-7 text-xs border-border bg-muted"
+                title="Default AHT from dropdown management"
               />
             </div>
 
