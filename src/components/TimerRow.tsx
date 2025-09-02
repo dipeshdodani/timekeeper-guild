@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -252,113 +253,83 @@ const TimerRow: React.FC<TimerRowProps> = ({
             {/* Stub Name */}
             <div className="space-y-1">
               <Label htmlFor="stubName" className="text-xs font-medium text-foreground-muted">Stub Name</Label>
-              <Select 
-                value={row.stubName || ""} 
+              <SearchableSelect
+                value={row.stubName || ""}
                 onValueChange={(value) => onUpdate(row.id, { stubName: value })}
-              >
-                <SelectTrigger className="bg-surface border-border h-8 text-xs">
-                  <SelectValue placeholder="Select stub" />
-                </SelectTrigger>
-                <SelectContent className="bg-surface border-border z-50">
-                  {dropdownData.stubs.map((stub) => (
-                    <SelectItem key={stub} value={stub}>{stub}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={dropdownData.stubs}
+                placeholder="Select stub"
+                searchPlaceholder="Search stubs..."
+                className="h-8 text-xs"
+              />
             </div>
 
             {/* University */}
             <div className="space-y-1">
               <Label htmlFor="university" className="text-xs font-medium text-foreground-muted">University</Label>
-              <Select 
-                value={row.university || ""} 
+              <SearchableSelect
+                value={row.university || ""}
                 onValueChange={(value) => onUpdate(row.id, { university: value })}
-              >
-                <SelectTrigger className="bg-surface border-border h-8 text-xs">
-                  <SelectValue placeholder="Select university" />
-                </SelectTrigger>
-                <SelectContent className="bg-surface border-border z-50">
-                  {dropdownData.universities.map((university) => (
-                    <SelectItem key={university} value={university}>{university}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={dropdownData.universities}
+                placeholder="Select university"
+                searchPlaceholder="Search universities..."
+                className="h-8 text-xs"
+              />
             </div>
 
             {/* Domain */}
             <div className="space-y-1">
               <Label htmlFor="domain" className="text-xs font-medium text-foreground-muted">Domain</Label>
-              <Select 
-                value={row.domain || ""} 
+              <SearchableSelect
+                value={row.domain || ""}
                 onValueChange={(value) => onUpdate(row.id, { domain: value })}
-              >
-                <SelectTrigger className="bg-surface border-border h-8 text-xs">
-                  <SelectValue placeholder="Select domain" />
-                </SelectTrigger>
-                <SelectContent className="bg-surface border-border z-50">
-                  {dropdownData.domains.map((domain) => (
-                    <SelectItem key={domain} value={domain}>{domain}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={dropdownData.domains}
+                placeholder="Select domain"
+                searchPlaceholder="Search domains..."
+                className="h-8 text-xs"
+              />
             </div>
 
             {/* Main Category Selection */}
             <div className="space-y-1">
               <Label htmlFor="category" className="text-xs font-medium text-foreground-muted">Main Category</Label>
-              <Select 
-                value={row.category || ""} 
+              <SearchableSelect
+                value={row.category || ""}
                 onValueChange={(value) => onUpdate(row.id, { category: value, subCategory: "", taskName: "" })}
-              >
-                <SelectTrigger className="bg-surface border-border h-8 text-xs">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent className="bg-surface border-border z-50">
-                  {getUniqueCategories().map((category) => (
-                    <SelectItem key={category} value={category}>{category}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={getUniqueCategories()}
+                placeholder="Select category"
+                searchPlaceholder="Search categories..."
+                className="h-8 text-xs"
+              />
             </div>
 
             {/* Sub Category Selection */}
             <div className="space-y-1">
               <Label htmlFor="subCategory" className="text-xs font-medium text-foreground-muted">Sub Category</Label>
-              <Select 
-                value={row.subCategory || ""} 
+              <SearchableSelect
+                value={row.subCategory || ""}
                 onValueChange={(value) => {
                   const taskName = row.category ? `${row.category} - ${value}` : value;
                   onUpdate(row.id, { subCategory: value, taskName });
                 }}
+                options={getSubCategoriesForCategory(row.category || "")}
+                placeholder="Select sub category"
+                searchPlaceholder="Search subcategories..."
                 disabled={!row.category}
-              >
-                <SelectTrigger className="bg-surface border-border h-8 text-xs">
-                  <SelectValue placeholder="Select sub category" />
-                </SelectTrigger>
-                <SelectContent className="bg-surface border-border z-50">
-                  {getSubCategoriesForCategory(row.category || "").map((subCategory) => (
-                    <SelectItem key={subCategory} value={subCategory}>{subCategory}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                className="h-8 text-xs"
+              />
             </div>
 
             {/* Client Type */}
             <div className="space-y-1">
               <Label htmlFor="clientType" className="text-xs font-medium text-foreground-muted">Client Type</Label>
-              <Select 
-                value={row.clientType || ""} 
+              <SearchableSelect
+                value={row.clientType || ""}
                 onValueChange={(value) => onUpdate(row.id, { clientType: value })}
-              >
-                <SelectTrigger className="bg-surface border-border h-8 text-xs">
-                  <SelectValue placeholder="Select client type" />
-                </SelectTrigger>
-                <SelectContent className="bg-surface border-border z-50">
-                  {dropdownData.clientTypes.map((type) => (
-                    <SelectItem key={type} value={type}>{type}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                options={dropdownData.clientTypes}
+                placeholder="Select client type"
+                searchPlaceholder="Search client types..."
+                className="h-8 text-xs"
+              />
             </div>
 
             {/* Status */}
