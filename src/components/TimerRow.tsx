@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Play, Pause, Square, Trash2, Timer } from 'lucide-react';
 import { getTaskAHT, getDropdownData } from '@/utils/dropdownStorage';
-import { useGlobalTimer } from '@/hooks/useGlobalTimer';
+import { TimerService } from '@/lib/TimerService';
 
 interface TimesheetRow {
   id: string;

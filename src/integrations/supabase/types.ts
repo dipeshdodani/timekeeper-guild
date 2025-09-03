@@ -14,7 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      timesheet_sessions: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          end_at: string | null
+          id: string
+          start_at: string
+          task_id: string
+          updated_at: string
+          work_date: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          end_at?: string | null
+          id?: string
+          start_at?: string
+          task_id: string
+          updated_at?: string
+          work_date?: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          end_at?: string | null
+          id?: string
+          start_at?: string
+          task_id?: string
+          updated_at?: string
+          work_date?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

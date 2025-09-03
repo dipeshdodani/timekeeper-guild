@@ -8,7 +8,7 @@ import { ArrowLeft, Clock, Plus, Coffee, Send } from "lucide-react";
 import TimerRow from "@/components/TimerRow";
 import { AvailabilityTracker } from "@/components/AvailabilityTracker";
 import { useToast } from "@/hooks/use-toast";
-import { useGlobalTimer, setupTimerCleanup } from "@/hooks/useGlobalTimer";
+import { TimerService } from "@/lib/TimerService";
 import { saveSubmittedTimesheet } from "@/utils/timesheetStorage";
 
 interface TimesheetRow {
