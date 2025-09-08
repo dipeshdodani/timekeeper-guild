@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Play, Pause, Square, Trash2, Timer } from 'lucide-react';
 import { getTaskAHT, getDropdownData } from '@/utils/dropdownStorage';
-import { TimerService } from '@/lib/TimerService';
+import { TimerService } from '@/services/TimerService';
 
 interface TimesheetRow {
   id: string;
@@ -59,8 +59,23 @@ const TimerRow: React.FC<TimerRowProps> = ({
 }) => {
   const [taskAHT, setTaskAHT] = useState<number>(0);
   
-  // Use global timer to get accurate timer state
-  const { getCurrentTime: getGlobalCurrentTime, getTimer } = useGlobalTimer();
+  // Use timer service state
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isActive, setIsActive] = useState(false);
+
+  // Subscribe to timer updates
+  useEffect(() => {
+    const unsubscribe = TimerService.subscribe(() => {
+      setCurrentTime(TimerService.getCurrentTime(row.id));
+      setIsActive(TimerService.isTaskRunning(row.id));
+    });
+    
+    // Initial state
+    setCurrentTime(TimerService.getCurrentTime(row.id));
+    setIsActive(TimerService.isTaskRunning(row.id));
+    
+    return unsubscribe;
+  }, [row.id]);
 
   // Update AHT when both category and subcategory are selected
   useEffect(() => {
@@ -108,13 +123,8 @@ const TimerRow: React.FC<TimerRowProps> = ({
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Get current time and timer state from global timer only
-  const getCurrentTime = () => {
-    return getGlobalCurrentTime(row.id);
-  };
-
-  const timer = getTimer(row.id);
-  const isTimerActive = timer?.isActive || false;
+  // Timer state is managed via useEffect subscription above
+  const isTimerActive = isActive;
 
   return (
     <Card className="shadow-sm border-border">
@@ -137,7 +147,7 @@ const TimerRow: React.FC<TimerRowProps> = ({
                 <div className="flex items-center gap-2 bg-muted/50 rounded px-2 py-1">
                   <Timer className="w-3 h-3 text-primary" />
                   <span className="text-xs font-mono text-foreground">
-                    {formatTime(getCurrentTime())}
+                    {formatTime(currentTime)}
                   </span>
                 </div>
               </div>

@@ -8,7 +8,7 @@ import { ArrowLeft, Clock, Plus, Coffee, Send } from "lucide-react";
 import TimerRow from "@/components/TimerRow";
 import { AvailabilityTracker } from "@/components/AvailabilityTracker";
 import { useToast } from "@/hooks/use-toast";
-import { TimerService } from "@/lib/TimerService";
+import { TimerService } from "@/services/TimerService";
 import { saveSubmittedTimesheet } from "@/utils/timesheetStorage";
 
 interface TimesheetRow {
@@ -37,20 +37,28 @@ const Timesheet = () => {
   const [isOnGlobalBreak, setIsOnGlobalBreak] = useState<boolean>(false);
   const [globalBreakStartTime, setGlobalBreakStartTime] = useState<number | null>(null);
   
-  // Use global timer hook
-  const { 
-    startTimer, 
-    pauseTimer, 
-    stopTimer, 
-    stopAllTimers,
-    clearAllTimers,
-    cleanupOrphanedTimers,
-    getTimer, 
-    getCurrentTime, 
-    hasActiveTimer, 
-    getActiveTimerId,
-    removeTimer 
-  } = useGlobalTimer();
+  // Timer service state
+  const [totalLoggedTime, setTotalLoggedTime] = useState(0);
+  const [hasActiveTask, setHasActiveTask] = useState(false);
+
+  // Subscribe to timer updates
+  useEffect(() => {
+    const unsubscribe = TimerService.subscribe(async () => {
+      const total = await TimerService.getTotalLoggedTime();
+      setTotalLoggedTime(total);
+      setHasActiveTask(!!TimerService.getRunningTask());
+    });
+    
+    // Initial load
+    const loadInitialData = async () => {
+      const total = await TimerService.getTotalLoggedTime();
+      setTotalLoggedTime(total);
+      setHasActiveTask(!!TimerService.getRunningTask());
+    };
+    loadInitialData();
+    
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     const role = localStorage.getItem("userRole");
@@ -67,18 +75,14 @@ const Timesheet = () => {
       const rows = parsed.rows || [];
       setRows(rows);
       
-      // Clean up orphaned timers that don't match current row IDs
-      const validRowIds = rows.map((row: TimesheetRow) => row.id);
-      cleanupOrphanedTimers(validRowIds);
+      // No need to clean up orphaned timers with new service
     } else {
       // Initialize with one empty row
       addNewRow();
     }
 
-    // Setup timer cleanup on app close
-    const cleanup = setupTimerCleanup();
-    return cleanup;
-  }, [navigate, cleanupOrphanedTimers]);
+    // Timer service handles its own cleanup
+  }, [navigate]);
 
   const addNewRow = () => {
     const newRow: TimesheetRow = {
@@ -117,28 +121,28 @@ const Timesheet = () => {
 
   const deleteRow = (id: string) => {
     setRows(prev => prev.filter(row => row.id !== id));
-    removeTimer(id); // Clean up timer state
+    // Stop timer if it's running for this task
+    if (TimerService.isTaskRunning(id)) {
+      TimerService.stopTask(id);
+    }
     saveToLocalStorage();
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     try {
       // Stop all active timers before submitting
-      stopAllTimers();
+      await TimerService.stopAllTimers();
 
       // Get final timer data and save submission
-      const finalRows = rows.map(row => {
-        const timer = getTimer(row.id);
+      const finalRows = await Promise.all(rows.map(async (row) => {
+        const totalTime = await TimerService.getTaskTotalTime(row.id);
         return {
           ...row,
-          totalTime: timer ? timer.totalTime : 0
+          totalTime
         };
-      });
+      }));
 
       saveSubmittedTimesheet(finalRows);
-      
-      // Clear all timer data after successful submission
-      clearAllTimers();
       
       toast({
         title: "Timesheet Submitted",
@@ -156,25 +160,22 @@ const Timesheet = () => {
     }
   };
 
-  // Calculate total logged time from all rows (using global timer state)
-  const totalLoggedTime = rows.reduce((total, row) => {
-    return total + getCurrentTime(row.id);
-  }, 0);
+  // Total logged time is managed via subscription above
 
-  // Timer control functions - simplified
+  // Timer control functions
   const handleStartTimer = (id: string) => {
-    startTimer(id);
+    TimerService.startTask(id);
   };
 
   const handlePauseTimer = (id: string) => {
-    pauseTimer(id);
+    TimerService.pauseTask(id);
   };
 
   const handleStopTimer = (id: string) => {
-    stopTimer(id);
+    TimerService.stopTask(id);
   };
 
-  const toggleGlobalBreak = () => {
+  const toggleGlobalBreak = async () => {
     if (isOnGlobalBreak) {
       // End break
       if (globalBreakStartTime) {
@@ -185,11 +186,8 @@ const Timesheet = () => {
       setGlobalBreakStartTime(null);
     } else {
       // Start break - pause all active timers
-      if (hasActiveTimer()) {
-        const activeTimerId = getActiveTimerId();
-        if (activeTimerId) {
-          pauseTimer(activeTimerId);
-        }
+      if (hasActiveTask) {
+        await TimerService.stopAllTimers();
       }
       setIsOnGlobalBreak(true);
       setGlobalBreakStartTime(Date.now());
