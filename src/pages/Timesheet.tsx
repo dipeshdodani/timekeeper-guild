@@ -8,7 +8,8 @@ import { ArrowLeft, Clock, Plus, Coffee, Send } from "lucide-react";
 import TimerRow from "@/components/TimerRow";
 import { AvailabilityTracker } from "@/components/AvailabilityTracker";
 import { useToast } from "@/hooks/use-toast";
-import { TimerService } from "@/services/TimerService";
+import { useTimerSummary } from "@/hooks/useTimer";
+import * as TimerStore from "@/services/PerformanceTimerService";
 import { saveSubmittedTimesheet } from "@/utils/timesheetStorage";
 
 interface TimesheetRow {
@@ -37,28 +38,8 @@ const Timesheet = () => {
   const [isOnGlobalBreak, setIsOnGlobalBreak] = useState<boolean>(false);
   const [globalBreakStartTime, setGlobalBreakStartTime] = useState<number | null>(null);
   
-  // Timer service state
-  const [totalLoggedTime, setTotalLoggedTime] = useState(0);
-  const [hasActiveTask, setHasActiveTask] = useState(false);
-
-  // Subscribe to timer updates
-  useEffect(() => {
-    const unsubscribe = TimerService.subscribe(async () => {
-      const total = await TimerService.getTotalLoggedTime();
-      setTotalLoggedTime(total);
-      setHasActiveTask(!!TimerService.getRunningTask());
-    });
-    
-    // Initial load
-    const loadInitialData = async () => {
-      const total = await TimerService.getTotalLoggedTime();
-      setTotalLoggedTime(total);
-      setHasActiveTask(!!TimerService.getRunningTask());
-    };
-    loadInitialData();
-    
-    return unsubscribe;
-  }, []);
+  // Timer summary hook for real-time totals
+  const timerSummary = useTimerSummary();
 
   useEffect(() => {
     const role = localStorage.getItem("userRole");
@@ -122,25 +103,30 @@ const Timesheet = () => {
   const deleteRow = (id: string) => {
     setRows(prev => prev.filter(row => row.id !== id));
     // Stop timer if it's running for this task
-    if (TimerService.isTaskRunning(id)) {
-      TimerService.stopTask(id);
+    if (TimerStore.isRunning(id)) {
+      TimerStore.pause(id);
     }
     saveToLocalStorage();
   };
 
   const handleSubmit = async () => {
     try {
-      // Stop all active timers before submitting
-      await TimerService.stopAllTimers();
+      // Pause all active timers before submitting
+      const allTimers = TimerStore.getAllTimers();
+      allTimers.forEach(timer => {
+        if (TimerStore.isRunning(timer.taskId)) {
+          TimerStore.pause(timer.taskId);
+        }
+      });
 
       // Get final timer data and save submission
-      const finalRows = await Promise.all(rows.map(async (row) => {
-        const totalTime = await TimerService.getTaskTotalTime(row.id);
+      const finalRows = rows.map((row) => {
+        const totalTime = TimerStore.getCurrentTime(row.id);
         return {
           ...row,
           totalTime
         };
-      }));
+      });
 
       saveSubmittedTimesheet(finalRows);
       
@@ -164,18 +150,18 @@ const Timesheet = () => {
 
   // Timer control functions
   const handleStartTimer = (id: string) => {
-    TimerService.startTask(id);
+    TimerStore.start(id);
   };
 
   const handlePauseTimer = (id: string) => {
-    TimerService.pauseTask(id);
+    TimerStore.pause(id);
   };
 
   const handleStopTimer = (id: string) => {
-    TimerService.stopTask(id);
+    TimerStore.reset(id);
   };
 
-  const toggleGlobalBreak = async () => {
+  const toggleGlobalBreak = () => {
     if (isOnGlobalBreak) {
       // End break
       if (globalBreakStartTime) {
@@ -186,22 +172,20 @@ const Timesheet = () => {
       setGlobalBreakStartTime(null);
     } else {
       // Start break - pause all active timers
-      if (hasActiveTask) {
-        await TimerService.stopAllTimers();
+      if (timerSummary.hasActiveTask) {
+        const allTimers = TimerStore.getAllTimers();
+        allTimers.forEach(timer => {
+          if (TimerStore.isRunning(timer.taskId)) {
+            TimerStore.pause(timer.taskId);
+          }
+        });
       }
       setIsOnGlobalBreak(true);
       setGlobalBreakStartTime(Date.now());
     }
   };
 
-  // Update timers every second
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRows(prev => [...prev]); // Force re-render to update current time display
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
+  // No need for manual re-render interval - hooks handle this
 
   // Get dropdown data from uploaded lists
   const dropdownData = getSimpleDropdownData();
@@ -256,7 +240,7 @@ const Timesheet = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Availability Tracker */}
         <AvailabilityTracker
-          totalLoggedTime={totalLoggedTime}
+          totalLoggedTime={timerSummary.totalLoggedTime}
           breakTime={globalBreakTime + (isOnGlobalBreak && globalBreakStartTime ? Math.floor((Date.now() - globalBreakStartTime) / 1000) : 0)}
           isOnBreak={isOnGlobalBreak}
           targetHours={8}
