@@ -10,6 +10,7 @@ import { DateRangePicker } from "@/components/DateRangePicker";
 import { PerformanceFilters, FilterPeriod } from "@/components/PerformanceFilters";
 import { useToast } from "@/hooks/use-toast";
 import { getReportData, getSubmittedTimesheets } from "@/utils/timesheetStorage";
+import { getSupabaseReportData, exportReportWithNames } from "@/utils/reportUtils";
 
 const Reports = () => {
   const [userRole, setUserRole] = useState<string>("");
@@ -75,8 +76,8 @@ const Reports = () => {
     }
   };
 
-  // Get actual report data from submitted timesheets
-  const getActualReportData = () => {
+  // Get actual report data from Supabase with proper user names
+  const getActualReportData = async () => {
     let startDate: Date | undefined;
     let endDate: Date | undefined;
     
@@ -108,10 +109,33 @@ const Reports = () => {
       }
     }
     
-    return getReportData(startDate, endDate);
+    return await getSupabaseReportData(startDate, endDate);
   };
 
-  const reportData = getActualReportData();
+  const [reportData, setReportData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load report data
+  useEffect(() => {
+    const loadReportData = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getActualReportData();
+        setReportData(data);
+      } catch (error) {
+        console.error('Error loading report data:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load report data",
+          variant: "destructive"
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadReportData();
+  }, [dateRange, customStartDate, customEndDate]);
 
   // Get filtered employees based on selected team
   const getFilteredEmployees = () => {
@@ -155,53 +179,29 @@ const Reports = () => {
   };
 
   const exportReport = (reportType: string) => {
-    const timestamp = new Date().toISOString().split('T')[0];
-    let csvContent = "";
-    let filename = "";
-    
-    // Add date range info to filename
-    const dateRangeStr = dateRange === "custom" && customStartDate && customEndDate 
-      ? `${customStartDate.toISOString().split('T')[0]}_to_${customEndDate.toISOString().split('T')[0]}`
-      : dateRange;
-
-    switch (reportType) {
-      case "time-summary":
-        csvContent = [
-          ["Metric", "Value"],
-          ["Total Hours", reportData.timeSummary.totalHours],
-          ["Billable Hours", reportData.timeSummary.billableHours],
-          ["Average Daily Hours", reportData.timeSummary.avgDailyHours],
-          ["Utilization Rate", `${reportData.timeSummary.utilizationRate}%`]
-        ].map(row => row.join(",")).join("\n");
-        filename = `time_summary_${dateRangeStr}_${timestamp}.csv`;
-        break;
-      case "task-breakdown":
-        csvContent = [
-          ["Task Name", "Hours", "Percentage", "Actual Avg Time"],
-          ...reportData.tasks.map(task => [task.name, task.hours, `${task.percentage}%`, `${task.actualAvgTime}min`])
-        ].map(row => row.join(",")).join("\n");
-        filename = `task_breakdown_${dateRangeStr}_${timestamp}.csv`;
-        break;
-      case "employee-summary":
-        csvContent = [
-          ["Employee ID", "Name", "Total Hours", "Tasks Completed", "Avg AHT", "AHT Efficiency"],
-          ...reportData.employees.map(emp => [emp.id, emp.name, emp.totalHours.toFixed(1), emp.tasks, emp.avgAHT.toFixed(1), `${emp.ahtEfficiency.toFixed(1)}%`])
-        ].map(row => row.join(",")).join("\n");
-        filename = `employee_summary_${dateRangeStr}_${timestamp}.csv`;
-        break;
+    if (!reportData) {
+      toast({
+        title: "Error",
+        description: "No report data available to export",
+        variant: "destructive"
+      });
+      return;
     }
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    
-    toast({
-      title: "Export Complete",
-      description: `${reportType} report exported for ${dateRange === "custom" ? "custom date range" : dateRange}`
-    });
+    try {
+      const filename = exportReportWithNames(reportType, reportData, dateRange, customStartDate, customEndDate);
+      toast({
+        title: "Export Complete",
+        description: `${reportType} report exported as ${filename}`
+      });
+    } catch (error) {
+      console.error('Error exporting report:', error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export report",
+        variant: "destructive"
+      });
+    }
   };
 
   useEffect(() => {
@@ -365,11 +365,18 @@ const Reports = () => {
               <CardTitle>Time Summary - {dateRange}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="flex justify-between">
-                  <span className="text-foreground-muted">Total Hours:</span>
-                  <span className="font-semibold">{reportData.timeSummary.totalHours}h</span>
+              {isLoading ? (
+                <div className="space-y-4">
+                  <div className="animate-pulse bg-muted h-4 rounded"></div>
+                  <div className="animate-pulse bg-muted h-4 rounded"></div>
+                  <div className="animate-pulse bg-muted h-4 rounded"></div>
                 </div>
+              ) : reportData ? (
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span className="text-foreground-muted">Total Hours:</span>
+                    <span className="font-semibold">{reportData.timeSummary.totalHours}h</span>
+                  </div>
                 <div className="flex justify-between">
                   <span className="text-foreground-muted">Billable Hours:</span>
                   <span className="font-semibold">{reportData.timeSummary.billableHours}h</span>
@@ -391,6 +398,11 @@ const Reports = () => {
                   <span className="font-semibold text-success">{reportData.timeSummary.ahtEfficiency}%</span>
                 </div>
               </div>
+              ) : (
+                <div className="text-center py-4 text-foreground-muted">
+                  <p>No data available for the selected period.</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -400,8 +412,15 @@ const Reports = () => {
               <CardTitle>Task Breakdown</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {reportData.tasks.length > 0 ? reportData.tasks.map((task, index) => (
+              {isLoading ? (
+                <div className="space-y-3">
+                  <div className="animate-pulse bg-muted h-8 rounded"></div>
+                  <div className="animate-pulse bg-muted h-8 rounded"></div>
+                  <div className="animate-pulse bg-muted h-8 rounded"></div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {reportData?.tasks.length > 0 ? reportData.tasks.map((task, index) => (
                   <div key={index} className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
@@ -421,13 +440,14 @@ const Reports = () => {
                       <span>Actual Avg: {task.actualAvgTime}min</span>
                     </div>
                   </div>
-                )) : (
-                  <div className="text-center py-4 text-foreground-muted">
-                    <p>No task data available for the selected period.</p>
-                    <p className="text-xs mt-1">Submit some timesheets to see task breakdown here.</p>
-                  </div>
-                )}
-              </div>
+                  )) : (
+                    <div className="text-center py-4 text-foreground-muted">
+                      <p>No task data available for the selected period.</p>
+                      <p className="text-xs mt-1">Submit some timesheets to see task breakdown here.</p>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
