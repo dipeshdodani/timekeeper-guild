@@ -34,12 +34,15 @@ export const getSupabaseReportData = async (startDate?: Date, endDate?: Date): P
     let query = supabase
       .from('timesheet_sessions')
       .select(`
-        *,
-        profiles:user_id (
-          id,
-          full_name,
-          email
-        )
+        id,
+        task_id,
+        start_at,
+        end_at,
+        duration_seconds,
+        work_date,
+        user_id,
+        created_at,
+        updated_at
       `);
 
     // Add date filtering if provided
