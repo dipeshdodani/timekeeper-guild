@@ -39,11 +39,13 @@ export function useTimerSummary() {
       return total + TimerStore.getBreakTime(timer.taskId);
     }, 0);
     const hasActiveTask = allTimers.some(timer => TimerStore.isRunning(timer.taskId));
+    const runningTaskId = TimerStore.getRunningTimerId();
 
     return {
       totalLoggedTime,
       totalBreakTime,
-      hasActiveTask
+      hasActiveTask,
+      runningTaskId
     };
   });
 
@@ -57,11 +59,13 @@ export function useTimerSummary() {
         return total + TimerStore.getBreakTime(timer.taskId);
       }, 0);
       const hasActiveTask = allTimers.some(timer => TimerStore.isRunning(timer.taskId));
+      const runningTaskId = TimerStore.getRunningTimerId();
 
       setSummary({
         totalLoggedTime,
         totalBreakTime,
-        hasActiveTask
+        hasActiveTask,
+        runningTaskId
       });
     });
 

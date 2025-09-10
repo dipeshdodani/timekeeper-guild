@@ -72,12 +72,21 @@ function closeOpenSpan(s: TaskTimerState, at: number) {
 
 export function start(taskId: string) {
   const s = ensure(taskId);
-  if (s.status !== 'running') {
-    closeOpenSpan(s, performance.now());
-    s.status = 'running';
-    s.spanStartMs = performance.now();
-    listeners.forEach((l) => l());
+  
+  // If this timer is already running, no action needed
+  if (s.status === 'running') return;
+  
+  // Stop any other running timers first (single-task constraint)
+  const currentlyRunning = getRunningTimerId();
+  if (currentlyRunning && currentlyRunning !== taskId) {
+    pause(currentlyRunning);
   }
+  
+  // Start this timer
+  closeOpenSpan(s, performance.now());
+  s.status = 'running';
+  s.spanStartMs = performance.now();
+  listeners.forEach((l) => l());
 }
 
 export function pause(taskId: string) {
@@ -92,6 +101,12 @@ export function pause(taskId: string) {
 export function resume(taskId: string) {
   const s = ensure(taskId);
   if (s.status === 'paused') {
+    // Stop any other running timers first (single-task constraint)
+    const currentlyRunning = getRunningTimerId();
+    if (currentlyRunning && currentlyRunning !== taskId) {
+      pause(currentlyRunning);
+    }
+    
     s.status = 'running';
     s.spanStartMs = performance.now();
     listeners.forEach((l) => l());
@@ -171,6 +186,21 @@ export function isOnBreak(taskId: string): boolean {
 // Get all active timers
 export function getAllTimers(): TaskTimerState[] {
   return Array.from(timers.values());
+}
+
+// Get the ID of the currently running timer (if any)
+export function getRunningTimerId(): string | null {
+  for (const [taskId, state] of timers) {
+    if (state.status === 'running') {
+      return taskId;
+    }
+  }
+  return null;
+}
+
+// Check if any timer is currently running
+export function hasRunningTimer(): boolean {
+  return getRunningTimerId() !== null;
 }
 
 // Cleanup

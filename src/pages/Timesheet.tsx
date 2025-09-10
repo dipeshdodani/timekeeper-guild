@@ -150,6 +150,19 @@ const Timesheet = () => {
 
   // Timer control functions
   const handleStartTimer = (id: string) => {
+    const currentlyRunning = TimerStore.getRunningTimerId();
+    
+    // If starting a different timer, notify user about the switch
+    if (currentlyRunning && currentlyRunning !== id) {
+      const runningRow = rows.find(row => row.id === currentlyRunning);
+      const newRow = rows.find(row => row.id === id);
+      
+      toast({
+        title: "Timer Switched",
+        description: `Paused "${runningRow?.taskName || 'previous task'}" and started "${newRow?.taskName || 'new task'}"`,
+      });
+    }
+    
     TimerStore.start(id);
   };
 
