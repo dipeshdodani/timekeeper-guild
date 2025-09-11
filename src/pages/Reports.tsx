@@ -501,15 +501,15 @@ const Reports = () => {
           <h2 className="text-xl font-semibold text-foreground mb-4">Quick Statistics</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="p-4 bg-surface border-border">
-              <div className="text-2xl font-bold text-primary">{reportData.timeSummary.totalHours}h</div>
+              <div className="text-2xl font-bold text-primary">{reportData?.timeSummary?.totalHours || 0}h</div>
               <div className="text-sm text-foreground-muted">Total Hours</div>
             </Card>
             <Card className="p-4 bg-surface border-border">
-              <div className="text-2xl font-bold text-primary">{reportData.timeSummary.billableHours}h</div>
+              <div className="text-2xl font-bold text-primary">{reportData?.timeSummary?.billableHours || 0}h</div>
               <div className="text-sm text-foreground-muted">Billable Hours</div>
             </Card>
             <Card className="p-4 bg-surface border-border">
-              <div className="text-2xl font-bold text-primary">{reportData.timeSummary.utilizationRate}%</div>
+              <div className="text-2xl font-bold text-primary">{reportData?.timeSummary?.utilizationRate || 0}%</div>
               <div className="text-sm text-foreground-muted">Utilization</div>
             </Card>
             <Card className="p-4 bg-surface border-border">
