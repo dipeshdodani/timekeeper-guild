@@ -170,8 +170,38 @@ const Timesheet = () => {
     TimerStore.pause(id);
   };
 
-  const handleStopTimer = (id: string) => {
+  const handleResumeTimer = (id: string) => {
+    const currentlyRunning = TimerStore.getRunningTimerId();
+    
+    // If resuming a different timer, notify user about the switch
+    if (currentlyRunning && currentlyRunning !== id) {
+      const runningRow = rows.find(row => row.id === currentlyRunning);
+      const newRow = rows.find(row => row.id === id);
+      
+      toast({
+        title: "Timer Switched",
+        description: `Paused "${runningRow?.taskName || 'previous task'}" and resumed "${newRow?.taskName || 'task'}"`,
+      });
+    }
+    
+    TimerStore.resume(id);
+  };
+
+  const handleSaveSubmit = (id: string) => {
+    // Stop the timer and finalize the entry
+    const totalTime = TimerStore.getCurrentTime(id);
     TimerStore.reset(id);
+    
+    // Update the row with final time and mark as completed
+    updateRow(id, { 
+      status: "Completed",
+      comments: rows.find(row => row.id === id)?.comments || `Total time: ${Math.floor(totalTime / 60)}min ${totalTime % 60}s`
+    });
+    
+    toast({
+      title: "Entry Saved",
+      description: `Time entry saved successfully (${Math.floor(totalTime / 60)}min ${totalTime % 60}s)`,
+    });
   };
 
   const toggleGlobalBreak = () => {
@@ -291,7 +321,8 @@ const Timesheet = () => {
               onDelete={deleteRow}
               onStartTimer={handleStartTimer}
               onPauseTimer={handlePauseTimer}
-              onStopTimer={handleStopTimer}
+              onResumeTimer={handleResumeTimer}
+              onSaveSubmit={handleSaveSubmit}
               isOnGlobalBreak={isOnGlobalBreak}
             />
           ))}

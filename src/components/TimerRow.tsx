@@ -8,7 +8,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Play, Pause, Square, Trash2, Timer } from 'lucide-react';
+import { Play, Pause, Trash2, Timer, Save } from 'lucide-react';
 import { getTaskAHT, getDropdownData } from '@/utils/dropdownStorage';
 import { useTimer } from '@/hooks/useTimer';
 import * as TimerStore from '@/services/PerformanceTimerService';
@@ -44,7 +44,8 @@ interface TimerRowProps {
   onDelete: (id: string) => void;
   onStartTimer: (id: string) => void;
   onPauseTimer: (id: string) => void;
-  onStopTimer: (id: string) => void;
+  onResumeTimer: (id: string) => void;
+  onSaveSubmit: (id: string) => void;
   isOnGlobalBreak: boolean;
 }
 
@@ -55,7 +56,8 @@ const TimerRow: React.FC<TimerRowProps> = ({
   onDelete,
   onStartTimer,
   onPauseTimer,
-  onStopTimer,
+  onResumeTimer,
+  onSaveSubmit,
   isOnGlobalBreak
 }) => {
   const [taskAHT, setTaskAHT] = useState<number>(0);
@@ -110,7 +112,8 @@ const TimerRow: React.FC<TimerRowProps> = ({
   };
 
   // Timer state comes from hook
-  const isTimerActive = timer.isRunning;
+  const isTimerRunning = timer.isRunning;
+  const isTimerPaused = timer.isPaused;
 
   return (
     <Card className="shadow-sm border-border">
@@ -141,38 +144,60 @@ const TimerRow: React.FC<TimerRowProps> = ({
               <div className="flex items-center gap-1">
                 {/* Timer Controls */}
                 <div className="flex items-center gap-1">
-                  {!isTimerActive ? (
+                  {/* Start/Pause/Resume Button */}
+                  {!isTimerRunning && !isTimerPaused ? (
+                    // Initial state - show Start
                     <Button
                       size="sm"
                       onClick={() => onStartTimer(row.id)}
                       variant="outline"
-                      className="h-6 w-6 p-0"
+                      className="h-6 px-2"
                       disabled={isOnGlobalBreak}
                       title={isOnGlobalBreak ? "Cannot start timer while on break" : "Start timer"}
                     >
-                      <Play className="w-3 h-3" />
+                      <Play className="w-3 h-3 mr-1" />
+                      Start
                     </Button>
-                  ) : (
+                  ) : isTimerRunning ? (
+                    // Running state - show Pause
                     <Button
                       size="sm"
                       onClick={() => onPauseTimer(row.id)}
                       variant="outline"
-                      className="h-6 w-6 p-0"
+                      className="h-6 px-2"
                       title="Pause timer"
                     >
-                      <Pause className="w-3 h-3" />
+                      <Pause className="w-3 h-3 mr-1" />
+                      Pause
+                    </Button>
+                  ) : (
+                    // Paused state - show Resume
+                    <Button
+                      size="sm"
+                      onClick={() => onResumeTimer(row.id)}
+                      variant="outline"
+                      className="h-6 px-2"
+                      disabled={isOnGlobalBreak}
+                      title={isOnGlobalBreak ? "Cannot resume timer while on break" : "Resume timer"}
+                    >
+                      <Play className="w-3 h-3 mr-1" />
+                      Resume
                     </Button>
                   )}
                   
-                  <Button
-                    size="sm"
-                    onClick={() => onStopTimer(row.id)}
-                    variant="outline"
-                    className="h-6 w-6 p-0"
-                    title="Stop timer"
-                  >
-                    <Square className="w-3 h-3" />
-                  </Button>
+                  {/* Save & Submit - only show when paused */}
+                  {isTimerPaused && (
+                    <Button
+                      size="sm"
+                      onClick={() => onSaveSubmit(row.id)}
+                      variant="default"
+                      className="h-6 px-2 bg-primary hover:bg-primary/90"
+                      title="Save & Submit entry"
+                    >
+                      <Save className="w-3 h-3 mr-1" />
+                      Save & Submit
+                    </Button>
+                  )}
                 </div>
                 
                 <Button
