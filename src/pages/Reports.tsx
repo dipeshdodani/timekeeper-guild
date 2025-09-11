@@ -371,7 +371,7 @@ const Reports = () => {
                   <div className="animate-pulse bg-muted h-4 rounded"></div>
                   <div className="animate-pulse bg-muted h-4 rounded"></div>
                 </div>
-              ) : reportData ? (
+              ) : reportData?.timeSummary ? (
                 <div className="space-y-4">
                   <div className="flex justify-between">
                     <span className="text-foreground-muted">Total Hours:</span>
