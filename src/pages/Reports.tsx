@@ -3,20 +3,18 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, BarChart3, FileText, Calendar, Download, Filter } from "lucide-react";
-import { DateRangePicker } from "@/components/DateRangePicker";
 import { PerformanceFilters, FilterPeriod } from "@/components/PerformanceFilters";
 import { useToast } from "@/hooks/use-toast";
-import { getReportData, getSubmittedTimesheets } from "@/utils/timesheetStorage";
 import { getSupabaseReportData, exportReportWithNames } from "@/utils/reportUtils";
+import { DashboardProvider, useDashboard } from "@/contexts/DashboardContext";
+import { GlobalDateFilter } from "@/components/GlobalDateFilter";
+import { FilterStatusPill } from "@/components/FilterStatusPill";
+import { getFilterCacheKey } from "@/utils/dateHelpers";
 
-const Reports = () => {
+const ReportsContent = () => {
   const [userRole, setUserRole] = useState<string>("");
-  const [dateRange, setDateRange] = useState("this-month");
-  const [customStartDate, setCustomStartDate] = useState<Date>();
-  const [customEndDate, setCustomEndDate] = useState<Date>();
   const [selectedTeam, setSelectedTeam] = useState("all");
   const [selectedEmployee, setSelectedEmployee] = useState("all");
   const [performanceFilter, setPerformanceFilter] = useState<{
@@ -30,6 +28,7 @@ const Reports = () => {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { globalDateFilter, lastUpdated } = useDashboard();
 
   // Sample data for reports with team structure
   const teamsData = {
@@ -76,46 +75,15 @@ const Reports = () => {
     }
   };
 
-  // Get actual report data from Supabase with proper user names
+  // Get actual report data from Supabase using global date filter
   const getActualReportData = async () => {
-    let startDate: Date | undefined;
-    let endDate: Date | undefined;
-    
-    if (dateRange === "custom" && customStartDate && customEndDate) {
-      startDate = customStartDate;
-      endDate = customEndDate;
-    } else {
-      const now = new Date();
-      switch (dateRange) {
-        case "this-week":
-          const startOfWeek = new Date(now);
-          startOfWeek.setDate(now.getDate() - now.getDay());
-          startDate = startOfWeek;
-          endDate = now;
-          break;
-        case "this-month":
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-          endDate = now;
-          break;
-        case "last-month":
-          startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-          endDate = new Date(now.getFullYear(), now.getMonth(), 0);
-          break;
-        default:
-          // Last 7 days
-          startDate = new Date(now);
-          startDate.setDate(now.getDate() - 7);
-          endDate = now;
-      }
-    }
-    
-    return await getSupabaseReportData(startDate, endDate);
+    return await getSupabaseReportData(globalDateFilter);
   };
 
   const [reportData, setReportData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load report data
+  // Load report data when filter changes
   useEffect(() => {
     const loadReportData = async () => {
       setIsLoading(true);
@@ -135,7 +103,7 @@ const Reports = () => {
     };
 
     loadReportData();
-  }, [dateRange, customStartDate, customEndDate]);
+  }, [getFilterCacheKey(globalDateFilter), lastUpdated]);
 
   // Get filtered employees based on selected team
   const getFilteredEmployees = () => {
@@ -166,13 +134,7 @@ const Reports = () => {
     return employeeMetrics;
   };
 
-  const handleDateRangeChange = (value: string, startDate?: Date, endDate?: Date) => {
-    setDateRange(value);
-    if (startDate && endDate) {
-      setCustomStartDate(startDate);
-      setCustomEndDate(endDate);
-    }
-  };
+  // Remove old date range handler as it's now handled by GlobalDateFilter component
 
   const handlePerformanceFilterChange = (period: FilterPeriod, startDate: Date, endDate: Date) => {
     setPerformanceFilter({ period, startDate, endDate });
@@ -189,7 +151,7 @@ const Reports = () => {
     }
 
     try {
-      const filename = exportReportWithNames(reportType, reportData, dateRange, customStartDate, customEndDate);
+      const filename = exportReportWithNames(reportType, reportData, globalDateFilter);
       toast({
         title: "Export Complete",
         description: `${reportType} report exported as ${filename}`
@@ -217,7 +179,7 @@ const Reports = () => {
     <div className="min-h-screen bg-gradient-to-br from-background via-surface to-surface-elevated">
       <div className="container mx-auto p-6">
         {/* Header */}
-        <div className="flex items-center gap-4 mb-8">
+        <div className="flex items-center gap-4 mb-6">
           <Button
             variant="outline"
             size="icon"
@@ -232,6 +194,11 @@ const Reports = () => {
           </div>
         </div>
 
+        {/* Filter Status */}
+        <div className="mb-6">
+          <FilterStatusPill />
+        </div>
+
         {/* Filters */}
         <Card className="mb-8 shadow-soft border-border">
           <CardHeader>
@@ -243,10 +210,7 @@ const Reports = () => {
           <CardContent>
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="space-y-4">
-                <DateRangePicker
-                  value={dateRange}
-                  onChange={handleDateRangeChange}
-                />
+                <GlobalDateFilter />
               </div>
               <div>
                 <Label htmlFor="team">Team</Label>
@@ -362,7 +326,7 @@ const Reports = () => {
           {/* Time Summary Card */}
           <Card className="shadow-soft border-border">
             <CardHeader>
-              <CardTitle>Time Summary - {dateRange}</CardTitle>
+              <CardTitle>Time Summary - {globalDateFilter.mode}</CardTitle>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -522,6 +486,14 @@ const Reports = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+const Reports = () => {
+  return (
+    <DashboardProvider>
+      <ReportsContent />
+    </DashboardProvider>
   );
 };
 

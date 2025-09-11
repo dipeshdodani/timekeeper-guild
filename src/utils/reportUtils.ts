@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getDisplayNames } from "./userUtils";
+import { GlobalDateFilter, getDateBoundaries } from "./dateHelpers";
 
 export interface ReportData {
   timeSummary: {
@@ -29,9 +30,12 @@ export interface ReportData {
 /**
  * Get report data from Supabase with proper user names
  */
-export const getSupabaseReportData = async (startDate?: Date, endDate?: Date): Promise<ReportData> => {
+export const getSupabaseReportData = async (filter: GlobalDateFilter): Promise<ReportData> => {
   try {
-    let query = supabase
+    const boundaries = getDateBoundaries(filter);
+    
+    // Use UTC boundaries for consistent database queries
+    const query = supabase
       .from('timesheet_sessions')
       .select(`
         id,
@@ -43,15 +47,9 @@ export const getSupabaseReportData = async (startDate?: Date, endDate?: Date): P
         user_id,
         created_at,
         updated_at
-      `);
-
-    // Add date filtering if provided
-    if (startDate) {
-      query = query.gte('work_date', startDate.toISOString().split('T')[0]);
-    }
-    if (endDate) {
-      query = query.lte('work_date', endDate.toISOString().split('T')[0]);
-    }
+      `)
+      .gte('start_at', boundaries.utcStart.toISOString())
+      .lte('end_at', boundaries.utcEnd.toISOString());
 
     const { data: sessions, error } = await query;
 
@@ -141,9 +139,7 @@ export const getSupabaseReportData = async (startDate?: Date, endDate?: Date): P
       ahtEfficiency: 85 + Math.random() * 15 // Mock efficiency for now
     }));
 
-    const workingDays = startDate && endDate 
-      ? Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)))
-      : Math.max(1, new Set(sessions.map(s => s.work_date)).size);
+    const workingDays = Math.max(1, Math.ceil((boundaries.endDate.getTime() - boundaries.startDate.getTime()) / (1000 * 60 * 60 * 24)));
 
     return {
       timeSummary: {
@@ -180,14 +176,17 @@ const getEmptyReportData = (): ReportData => ({
 /**
  * Export report data to CSV with proper user names
  */
-export const exportReportWithNames = (reportType: string, reportData: ReportData, dateRange: string, customStartDate?: Date, customEndDate?: Date) => {
+export const exportReportWithNames = (reportType: string, reportData: ReportData, filter: GlobalDateFilter): string => {
+  const boundaries = getDateBoundaries(filter);
+  const filterStr = filter.mode.replace('-', '_');
+  const startStr = boundaries.startDate.toISOString().split('T')[0];
+  const endStr = boundaries.endDate.toISOString().split('T')[0];
   const timestamp = new Date().toISOString().split('T')[0];
+  
   let csvContent = "";
   let filename = "";
   
-  const dateRangeStr = dateRange === "custom" && customStartDate && customEndDate 
-    ? `${customStartDate.toISOString().split('T')[0]}_to_${customEndDate.toISOString().split('T')[0]}`
-    : dateRange;
+  const dateRangeStr = `${filterStr}_${startStr}_to_${endStr}`;
 
   switch (reportType) {
     case "time-summary":
