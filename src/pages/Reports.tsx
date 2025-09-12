@@ -111,27 +111,31 @@ const ReportsContent = () => {
     return teamData ? teamData.employees : [];
   };
 
-  // Get filtered report data based on selections
+  // Get filtered report data based on selections using actual data
   const getFilteredReportData = () => {
-    const employees = getFilteredEmployees();
-    let filteredEmployees = employees;
+    if (!reportData?.employees) {
+      return [];
+    }
+
+    let filteredEmployees = reportData.employees;
+
+    // Filter by team if specific team selected
+    if (selectedTeam !== "all") {
+      const teamEmployees = getFilteredEmployees();
+      const teamEmployeeIds = teamEmployees.map(emp => emp.id);
+      filteredEmployees = reportData.employees.filter(emp => 
+        teamEmployeeIds.includes(emp.id)
+      );
+    }
 
     // Further filter by specific employee if selected
     if (selectedEmployee !== "all") {
-      filteredEmployees = employees.filter(emp => emp.id === selectedEmployee);
+      filteredEmployees = filteredEmployees.filter(emp => emp.id === selectedEmployee);
     }
 
-    // Mock filtered metrics (in real app, this would come from API)
-    const employeeMetrics = filteredEmployees.map(emp => ({
-      id: emp.id,
-      name: emp.name,
-      totalHours: 40 + Math.random() * 10, // Mock hours
-      tasks: 15 + Math.floor(Math.random() * 10), // Mock task count
-      avgAHT: 25 + Math.random() * 20, // Mock average AHT
-      ahtEfficiency: 85 + Math.random() * 15 // Mock AHT efficiency percentage
-    }));
-
-    return employeeMetrics;
+    // Only show employees with actual activity (non-zero hours)
+    // For day filters, this ensures only employees with logged time appear
+    return filteredEmployees.filter(emp => emp.totalHours > 0);
   };
 
   // Remove old date range handler as it's now handled by GlobalDateFilter component
