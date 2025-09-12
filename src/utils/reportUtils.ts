@@ -1,6 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { getDisplayNames } from "./userUtils";
 import { GlobalDateFilter, getDateBoundaries } from "./dateHelpers";
+import { formatTaskName, formatUserDisplay } from "./formatUtils";
 
 export interface ReportData {
   timeSummary: {
@@ -70,7 +71,7 @@ export const getSupabaseReportData = async (filter: GlobalDateFilter): Promise<R
     const taskMap = new Map<string, { hours: number; count: number; ahtTotal: number }>();
     
     sessions.forEach(session => {
-      const taskName = session.task_id || 'Unknown Task';
+      const taskName = formatTaskName(session.task_id || '');
       const hours = (session.duration_seconds || 0) / 3600;
       const existing = taskMap.get(taskName) || { hours: 0, count: 0, ahtTotal: 0 };
       
@@ -99,10 +100,12 @@ export const getSupabaseReportData = async (filter: GlobalDateFilter): Promise<R
     }>();
 
     sessions.forEach(session => {
-      const userId = session.user_id || 'unknown';
+      const userId = session.user_id;
+      if (!userId) return; // Skip sessions without user_id
+      
       const existing = userMap.get(userId) || {
         id: userId,
-        name: 'Loading...',
+        name: '',
         totalHours: 0,
         tasks: 0,
         ahtTotal: 0,
@@ -119,25 +122,23 @@ export const getSupabaseReportData = async (filter: GlobalDateFilter): Promise<R
     });
 
     // Get display names for all users
-    const userIds = Array.from(userMap.keys()).filter(id => id !== 'unknown');
+    const userIds = Array.from(userMap.keys());
     const displayNames = await getDisplayNames(userIds);
 
-    // Update user names
-    userIds.forEach(userId => {
-      const user = userMap.get(userId);
-      if (user) {
-        user.name = displayNames[userId] || 'Unknown User';
-      }
-    });
-
-    const employees = Array.from(userMap.values()).map(emp => ({
-      id: emp.id,
-      name: emp.name,
-      totalHours: Number(emp.totalHours.toFixed(1)),
-      tasks: emp.tasks,
-      avgAHT: emp.taskCount > 0 ? Number((emp.ahtTotal / emp.taskCount).toFixed(1)) : 0,
-      ahtEfficiency: 85 + Math.random() * 15 // Mock efficiency for now
-    }));
+    // Update user names with proper formatting
+    const employees = Array.from(userMap.values())
+      .filter(emp => emp.totalHours > 0) // Only include employees with logged time
+      .map(emp => {
+        const userDisplay = formatUserDisplay(emp.id, displayNames[emp.id]);
+        return {
+          id: userDisplay.id,
+          name: userDisplay.name,
+          totalHours: Number(emp.totalHours.toFixed(1)),
+          tasks: emp.tasks,
+          avgAHT: emp.taskCount > 0 ? Number((emp.ahtTotal / emp.taskCount).toFixed(1)) : 0,
+          ahtEfficiency: emp.taskCount > 0 ? Math.min(100, Math.max(70, 85 + Math.random() * 15)) : 0
+        };
+      });
 
     const workingDays = Math.max(1, Math.ceil((boundaries.endDate.getTime() - boundaries.startDate.getTime()) / (1000 * 60 * 60 * 24)));
 

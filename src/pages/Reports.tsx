@@ -12,6 +12,7 @@ import { DashboardProvider, useDashboard } from "@/contexts/DashboardContext";
 import { GlobalDateFilter } from "@/components/GlobalDateFilter";
 import { FilterStatusPill } from "@/components/FilterStatusPill";
 import { getFilterCacheKey } from "@/utils/dateHelpers";
+import { formatHours, formatMinutes } from "@/utils/formatUtils";
 
 const ReportsContent = () => {
   const [userRole, setUserRole] = useState<string>("");
@@ -343,15 +344,15 @@ const ReportsContent = () => {
                 <div className="space-y-4">
                   <div className="flex justify-between">
                     <span className="text-foreground-muted">Total Hours:</span>
-                    <span className="font-semibold">{reportData.timeSummary.totalHours}h</span>
+                    <span className="font-semibold">{formatHours(reportData.timeSummary.totalHours)}</span>
                   </div>
                 <div className="flex justify-between">
                   <span className="text-foreground-muted">Billable Hours:</span>
-                  <span className="font-semibold">{reportData.timeSummary.billableHours}h</span>
+                  <span className="font-semibold">{formatHours(reportData.timeSummary.billableHours)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-foreground-muted">Avg Daily Hours:</span>
-                  <span className="font-semibold">{reportData.timeSummary.avgDailyHours}h</span>
+                  <span className="font-semibold">{formatHours(reportData.timeSummary.avgDailyHours)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-foreground-muted">Utilization Rate:</span>
@@ -359,11 +360,11 @@ const ReportsContent = () => {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-foreground-muted">Avg AHT:</span>
-                  <span className="font-semibold">{reportData.timeSummary.avgAHT}min</span>
+                  <span className="font-semibold">{formatMinutes(reportData.timeSummary.avgAHT)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-foreground-muted">AHT Efficiency:</span>
-                  <span className="font-semibold text-success">{reportData.timeSummary.ahtEfficiency}%</span>
+                  <span className="font-semibold text-success">{reportData.timeSummary.ahtEfficiency.toFixed(1)}%</span>
                 </div>
               </div>
               ) : (
@@ -394,7 +395,7 @@ const ReportsContent = () => {
                       <div className="flex-1">
                         <div className="flex justify-between text-sm mb-1">
                           <span className="text-foreground">{task.name}</span>
-                          <span className="text-foreground-muted">{task.hours}h</span>
+                          <span className="text-foreground-muted">{formatHours(task.hours)}</span>
                         </div>
                         <div className="w-full bg-muted rounded-full h-2">
                           <div 
@@ -405,7 +406,7 @@ const ReportsContent = () => {
                       </div>
                     </div>
                     <div className="flex justify-between text-xs text-foreground-muted pl-2">
-                      <span>Actual Avg: {task.actualAvgTime}min</span>
+                      <span>Actual Avg: {formatMinutes(task.actualAvgTime)}</span>
                     </div>
                   </div>
                   )) : (
@@ -444,20 +445,35 @@ const ReportsContent = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {getFilteredReportData().map((employee, index) => (
-                    <tr key={index} className="border-b border-border">
-                      <td className="py-2">{employee.id}</td>
-                      <td className="py-2">{employee.name}</td>
-                      <td className="py-2">{employee.totalHours.toFixed(1)}h</td>
-                      <td className="py-2">{employee.tasks}</td>
-                      <td className="py-2">{employee.avgAHT.toFixed(1)}min</td>
-                      <td className="py-2">
-                        <span className={employee.ahtEfficiency >= 90 ? 'text-success' : employee.ahtEfficiency >= 80 ? 'text-warning' : 'text-destructive'}>
-                          {employee.ahtEfficiency.toFixed(1)}%
-                        </span>
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-foreground-muted">
+                        <div className="animate-pulse">Loading employee data...</div>
                       </td>
                     </tr>
-                  ))}
+                  ) : getFilteredReportData().length > 0 ? (
+                    getFilteredReportData().map((employee, index) => (
+                      <tr key={index} className="border-b border-border">
+                        <td className="py-2">{employee.id}</td>
+                        <td className="py-2">{employee.name}</td>
+                        <td className="py-2">{formatHours(employee.totalHours)}</td>
+                        <td className="py-2">{employee.tasks}</td>
+                        <td className="py-2">{formatMinutes(employee.avgAHT)}</td>
+                        <td className="py-2">
+                          <span className={employee.ahtEfficiency >= 90 ? 'text-success' : employee.ahtEfficiency >= 80 ? 'text-warning' : 'text-destructive'}>
+                            {employee.ahtEfficiency.toFixed(1)}%
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-foreground-muted">
+                        <p>No employee data available for the selected period.</p>
+                        <p className="text-xs mt-1">No timesheet sessions were logged during this timeframe.</p>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -469,11 +485,11 @@ const ReportsContent = () => {
           <h2 className="text-xl font-semibold text-foreground mb-4">Quick Statistics</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card className="p-4 bg-surface border-border">
-              <div className="text-2xl font-bold text-primary">{reportData?.timeSummary?.totalHours || 0}h</div>
+              <div className="text-2xl font-bold text-primary">{formatHours(reportData?.timeSummary?.totalHours || 0)}</div>
               <div className="text-sm text-foreground-muted">Total Hours</div>
             </Card>
             <Card className="p-4 bg-surface border-border">
-              <div className="text-2xl font-bold text-primary">{reportData?.timeSummary?.billableHours || 0}h</div>
+              <div className="text-2xl font-bold text-primary">{formatHours(reportData?.timeSummary?.billableHours || 0)}</div>
               <div className="text-sm text-foreground-muted">Billable Hours</div>
             </Card>
             <Card className="p-4 bg-surface border-border">
