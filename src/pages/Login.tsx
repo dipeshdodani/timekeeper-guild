@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
 import { Clock, Shield, Users } from "lucide-react";
 
 const Login = () => {
@@ -14,30 +15,69 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Clear session storage when component mounts (user is logging in)
   useEffect(() => {
     clearSessionEntries();
   }, []);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     
-    if (loginType === "super-user") {
-      // Super User login with email
-      if (email && password) {
+    try {
+      if (loginType === "super-user") {
+        // Super User login with email
+        if (!email || !password) {
+          toast({
+            title: "Login Failed",
+            description: "Please fill in all required fields (Email and Password).",
+            variant: "destructive",
+          });
+          return;
+        }
+        
         localStorage.setItem("userRole", "super-user");
         localStorage.setItem("userEmail", email);
+        
+        toast({
+          title: "Login Successful",
+          description: `Welcome back, Super User!`,
+        });
+        
         navigate("/dashboard");
-      }
-    } else {
-      // Employee login with Employee ID
-      if (employeeId && password && role) {
+      } else {
+        // Employee login with Employee ID
+        if (!employeeId || !password || !role) {
+          toast({
+            title: "Login Failed", 
+            description: "Please fill in all required fields (Employee ID, Password, and Role).",
+            variant: "destructive",
+          });
+          return;
+        }
+        
         localStorage.setItem("userRole", role);
         localStorage.setItem("employeeId", employeeId);
+        
+        toast({
+          title: "Login Successful",
+          description: `Welcome back, ${role === 'team-member' ? 'Team Member' : role.toUpperCase()}!`,
+        });
+        
         navigate("/dashboard");
       }
+    } catch (error) {
+      toast({
+        title: "Login Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -175,9 +215,10 @@ const Login = () => {
 
               <Button 
                 type="submit" 
-                className="w-full bg-gradient-to-r from-primary to-primary-light hover:from-primary-light hover:to-primary-glow shadow-soft transition-all duration-300"
+                disabled={isLoading}
+                className="w-full bg-gradient-to-r from-primary to-primary-light hover:from-primary-light hover:to-primary-glow shadow-soft transition-all duration-300 disabled:opacity-50"
               >
-                Sign In
+                {isLoading ? "Signing In..." : "Sign In"}
               </Button>
             </form>
           </CardContent>
