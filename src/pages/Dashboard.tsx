@@ -22,16 +22,22 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [userRole, setUserRole] = useState("");
   const [userEmail, setUserEmail] = useState("");
+  const [employeeId, setEmployeeId] = useState("");
 
   useEffect(() => {
     const role = localStorage.getItem("userRole");
     const email = localStorage.getItem("userEmail");
-    if (!role || !email) {
+    const empId = localStorage.getItem("employeeId");
+    
+    // Check if user is authenticated (either super-user with email or employee with ID)
+    if (!role || (!email && !empId)) {
       navigate("/");
       return;
     }
+    
     setUserRole(role);
-    setUserEmail(email);
+    setUserEmail(email || "");
+    setEmployeeId(empId || "");
   }, [navigate]);
 
   const handleLogout = () => {
@@ -134,7 +140,9 @@ const Dashboard = () => {
             
             <div className="flex items-center space-x-4">
               <div className="text-right">
-                <p className="text-sm font-medium text-foreground">{userEmail}</p>
+                <p className="text-sm font-medium text-foreground">
+                  {userEmail || employeeId || "User"}
+                </p>
                 <Badge variant={getRoleBadgeVariant(userRole)} className="text-xs">
                   {getRoleDisplayName(userRole)}
                 </Badge>
@@ -158,7 +166,7 @@ const Dashboard = () => {
         {/* Welcome Section */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-foreground mb-2">
-            Welcome back, {userEmail.split('@')[0]}!
+            Welcome back, {userEmail ? userEmail.split('@')[0] : employeeId || "User"}!
           </h2>
           <p className="text-foreground-muted">
             Here's your timesheet overview for today
