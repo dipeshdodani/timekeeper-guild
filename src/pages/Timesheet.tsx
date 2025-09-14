@@ -10,7 +10,7 @@ import { AvailabilityTracker } from "@/components/AvailabilityTracker";
 import { useToast } from "@/hooks/use-toast";
 import { useTimerSummary } from "@/hooks/useTimer";
 import * as TimerStore from "@/services/PerformanceTimerService";
-import { saveSubmittedTimesheet } from "@/utils/timesheetStorage";
+import { saveSubmittedTimesheet, saveSessionEntry, getSessionEntries, clearSessionEntries } from "@/utils/timesheetStorage";
 
 interface TimesheetRow {
   id: string;
@@ -34,6 +34,7 @@ const Timesheet = () => {
   const { toast } = useToast();
   const [userRole, setUserRole] = useState<string>("");
   const [rows, setRows] = useState<TimesheetRow[]>([]);
+  const [savedEntries, setSavedEntries] = useState<(TimesheetRow & { savedAt: string; totalTime?: number })[]>([]);
   const [globalBreakTime, setGlobalBreakTime] = useState<number>(0);
   const [isOnGlobalBreak, setIsOnGlobalBreak] = useState<boolean>(false);
   const [globalBreakStartTime, setGlobalBreakStartTime] = useState<number | null>(null);
@@ -49,20 +50,20 @@ const Timesheet = () => {
     }
     setUserRole(role);
 
-    // Load saved timesheet data
+    // Load saved entries from session storage
+    const sessionEntries = getSessionEntries();
+    setSavedEntries(sessionEntries);
+
+    // Load current working timesheet data
     const savedData = localStorage.getItem(`timesheet-${new Date().toDateString()}`);
     if (savedData) {
       const parsed = JSON.parse(savedData);
       const rows = parsed.rows || [];
       setRows(rows);
-      
-      // No need to clean up orphaned timers with new service
     } else {
       // Initialize with one empty row
       addNewRow();
     }
-
-    // Timer service handles its own cleanup
   }, [navigate]);
 
   const addNewRow = () => {
@@ -111,31 +112,40 @@ const Timesheet = () => {
 
   const handleSubmit = async () => {
     try {
-      // Pause all active timers before submitting
-      const allTimers = TimerStore.getAllTimers();
-      allTimers.forEach(timer => {
-        if (TimerStore.isRunning(timer.taskId)) {
-          TimerStore.pause(timer.taskId);
-        }
-      });
-
-      // Get final timer data and save submission
+      // Combine current working rows with saved session entries
+      const allSessionEntries = [...savedEntries];
+      
+      // Add any unsaved current rows
       const finalRows = rows.map((row) => {
         const totalTime = TimerStore.getCurrentTime(row.id);
         return {
           ...row,
           totalTime
         };
-      });
+      }).filter(row => row.ticketNumber || row.category); // Only include rows with some content
+      
+      const allRowsToSubmit = [...allSessionEntries, ...finalRows];
+      
+      if (allRowsToSubmit.length === 0) {
+        toast({
+          title: "No Data",
+          description: "Please add some timesheet entries before submitting.",
+          variant: "destructive"
+        });
+        return;
+      }
 
-      saveSubmittedTimesheet(finalRows);
+      saveSubmittedTimesheet(allRowsToSubmit);
+      
+      // Clear session storage on submit
+      clearSessionEntries();
       
       toast({
         title: "Timesheet Submitted",
         description: "Your timesheet has been submitted successfully.",
       });
       
-      console.log("Submitting timesheet data:", finalRows);
+      console.log("Submitting timesheet data:", allRowsToSubmit);
       navigate("/dashboard");
     } catch (error) {
       toast({
@@ -192,16 +202,33 @@ const Timesheet = () => {
     const totalTime = TimerStore.getCurrentTime(id);
     TimerStore.reset(id);
     
-    // Update the row with final time and mark as completed
-    updateRow(id, { 
-      status: "Completed",
-      comments: rows.find(row => row.id === id)?.comments || `Total time: ${Math.floor(totalTime / 60)}min ${totalTime % 60}s`
-    });
-    
-    toast({
-      title: "Entry Saved",
-      description: `Time entry saved successfully (${Math.floor(totalTime / 60)}min ${totalTime % 60}s)`,
-    });
+    // Find the row and save it to session
+    const rowToSave = rows.find(row => row.id === id);
+    if (rowToSave) {
+      const entryWithTime = {
+        ...rowToSave,
+        status: "Completed",
+        totalTime,
+        comments: rowToSave.comments || `Total time: ${Math.floor(totalTime / 60)}min ${totalTime % 60}s`
+      };
+      
+      // Save to session storage
+      const savedEntry = saveSessionEntry(entryWithTime);
+      setSavedEntries(prev => [...prev, savedEntry]);
+      
+      // Remove from current working rows and clear the form
+      setRows(prev => prev.filter(row => row.id !== id));
+      
+      // Add a new empty row if no rows left
+      if (rows.length === 1) {
+        addNewRow();
+      }
+      
+      toast({
+        title: "Entry Saved",
+        description: `Time entry saved successfully (${Math.floor(totalTime / 60)}min ${totalTime % 60}s)`,
+      });
+    }
   };
 
   const toggleGlobalBreak = () => {
@@ -290,10 +317,46 @@ const Timesheet = () => {
           workTargetHours={8}
         />
 
-        {/* Timesheet Rows */}
+        {/* Saved Entries List */}
+        {savedEntries.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Saved Entries ({savedEntries.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {savedEntries.map((entry, index) => (
+                  <div key={`${entry.id}-${entry.savedAt}`} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border">
+                    <div className="flex items-center gap-4">
+                      <Badge variant="default" className="text-xs">
+                        {entry.status}
+                      </Badge>
+                      <div className="text-sm">
+                        <span className="font-medium">{entry.ticketNumber || 'No Ticket'}</span>
+                        {entry.category && (
+                          <span className="text-foreground-muted ml-2">- {entry.category}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-foreground-muted">
+                      <span>{Math.floor((entry.totalTime || 0) / 60)}min {((entry.totalTime || 0) % 60)}s</span>
+                      <span>•</span>
+                      <span>{new Date(entry.savedAt).toLocaleTimeString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Current Working Entries */}
         <div className="space-y-4">
           <CardTitle className="text-lg font-semibold text-foreground">
-            Timesheet Entries
+            Current Timesheet Entries
           </CardTitle>
           
           {/* Column Headers */}

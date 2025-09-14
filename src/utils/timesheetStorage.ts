@@ -27,6 +27,40 @@ interface TimesheetSubmission {
 }
 
 const SUBMITTED_TIMESHEETS_KEY = 'submittedTimesheets';
+const SESSION_ENTRIES_KEY = 'sessionTimesheetEntries';
+
+// Save individual timesheet entry to session storage
+export const saveSessionEntry = (entry: TimesheetRow) => {
+  try {
+    const existingEntries = getSessionEntries();
+    const newEntry = {
+      ...entry,
+      savedAt: new Date().toISOString()
+    };
+    existingEntries.push(newEntry);
+    sessionStorage.setItem(SESSION_ENTRIES_KEY, JSON.stringify(existingEntries));
+    return newEntry;
+  } catch (error) {
+    console.error('Error saving session entry:', error);
+    throw error;
+  }
+};
+
+// Get all saved entries from current session
+export const getSessionEntries = (): (TimesheetRow & { savedAt: string; totalTime?: number })[] => {
+  try {
+    const data = sessionStorage.getItem(SESSION_ENTRIES_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch (error) {
+    console.error('Error loading session entries:', error);
+    return [];
+  }
+};
+
+// Clear session entries (called on logout)
+export const clearSessionEntries = () => {
+  sessionStorage.removeItem(SESSION_ENTRIES_KEY);
+};
 
 // Save submitted timesheet data
 export const saveSubmittedTimesheet = (rows: TimesheetRow[], employeeInfo?: { id: string; name: string }) => {
