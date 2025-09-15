@@ -8,7 +8,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Play, Pause, Trash2, Timer, Save } from 'lucide-react';
+import { Play, Pause, Trash2, Timer } from 'lucide-react';
 import { getTaskAHT, getDropdownData } from '@/utils/dropdownStorage';
 import { useTimer } from '@/hooks/useTimer';
 import * as TimerStore from '@/services/PerformanceTimerService';
@@ -45,7 +45,7 @@ interface TimerRowProps {
   onStartTimer: (id: string) => void;
   onPauseTimer: (id: string) => void;
   onResumeTimer: (id: string) => void;
-  onSaveSubmit: (id: string) => void;
+  
   isOnGlobalBreak: boolean;
 }
 
@@ -57,7 +57,6 @@ const TimerRow: React.FC<TimerRowProps> = ({
   onStartTimer,
   onPauseTimer,
   onResumeTimer,
-  onSaveSubmit,
   isOnGlobalBreak
 }) => {
   const [taskAHT, setTaskAHT] = useState<number>(0);
@@ -182,20 +181,6 @@ const TimerRow: React.FC<TimerRowProps> = ({
                     >
                       <Play className="w-3 h-3 mr-1" />
                       Resume
-                    </Button>
-                  )}
-                  
-                  {/* Save & Submit - only show when paused */}
-                  {isTimerPaused && (
-                    <Button
-                      size="sm"
-                      onClick={() => onSaveSubmit(row.id)}
-                      variant="default"
-                      className="h-6 px-2 bg-primary hover:bg-primary/90"
-                      title="Save & Submit entry"
-                    >
-                      <Save className="w-3 h-3 mr-1" />
-                      Save & Submit
                     </Button>
                   )}
                 </div>

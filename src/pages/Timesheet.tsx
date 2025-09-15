@@ -112,14 +112,23 @@ const Timesheet = () => {
 
   const handleSubmit = async () => {
     try {
+      // Stop all running timers before submitting
+      const allTimers = TimerStore.getAllTimers();
+      allTimers.forEach(timer => {
+        if (TimerStore.isRunning(timer.taskId)) {
+          TimerStore.pause(timer.taskId);
+        }
+      });
+
       // Combine current working rows with saved session entries
       const allSessionEntries = [...savedEntries];
       
-      // Add any unsaved current rows
+      // Add any current working rows that have content
       const finalRows = rows.map((row) => {
         const totalTime = TimerStore.getCurrentTime(row.id);
         return {
           ...row,
+          status: "Completed",
           totalTime
         };
       }).filter(row => row.ticketNumber || row.category); // Only include rows with some content
@@ -137,12 +146,13 @@ const Timesheet = () => {
 
       saveSubmittedTimesheet(allRowsToSubmit);
       
-      // Clear session storage on submit
+      // Clear session storage and current working data on submit
       clearSessionEntries();
+      localStorage.removeItem(`timesheet-${new Date().toDateString()}`);
       
       toast({
         title: "Timesheet Submitted",
-        description: "Your timesheet has been submitted successfully.",
+        description: `Successfully submitted ${allRowsToSubmit.length} time entries for the day.`,
       });
       
       console.log("Submitting timesheet data:", allRowsToSubmit);
@@ -197,39 +207,6 @@ const Timesheet = () => {
     TimerStore.resume(id);
   };
 
-  const handleSaveSubmit = (id: string) => {
-    // Stop the timer and finalize the entry
-    const totalTime = TimerStore.getCurrentTime(id);
-    TimerStore.reset(id);
-    
-    // Find the row and save it to session
-    const rowToSave = rows.find(row => row.id === id);
-    if (rowToSave) {
-      const entryWithTime = {
-        ...rowToSave,
-        status: "Completed",
-        totalTime,
-        comments: rowToSave.comments || `Total time: ${Math.floor(totalTime / 60)}min ${totalTime % 60}s`
-      };
-      
-      // Save to session storage
-      const savedEntry = saveSessionEntry(entryWithTime);
-      setSavedEntries(prev => [...prev, savedEntry]);
-      
-      // Remove from current working rows and clear the form
-      setRows(prev => prev.filter(row => row.id !== id));
-      
-      // Add a new empty row if no rows left
-      if (rows.length === 1) {
-        addNewRow();
-      }
-      
-      toast({
-        title: "Entry Saved",
-        description: `Time entry saved successfully (${Math.floor(totalTime / 60)}min ${totalTime % 60}s)`,
-      });
-    }
-  };
 
   const toggleGlobalBreak = () => {
     if (isOnGlobalBreak) {
@@ -385,7 +362,6 @@ const Timesheet = () => {
               onStartTimer={handleStartTimer}
               onPauseTimer={handlePauseTimer}
               onResumeTimer={handleResumeTimer}
-              onSaveSubmit={handleSaveSubmit}
               isOnGlobalBreak={isOnGlobalBreak}
             />
           ))}
