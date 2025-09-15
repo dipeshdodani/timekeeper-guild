@@ -11,6 +11,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useTimerSummary } from "@/hooks/useTimer";
 import * as TimerStore from "@/services/PerformanceTimerService";
 import { saveSubmittedTimesheet, saveSessionEntry, getSessionEntries, clearSessionEntries } from "@/utils/timesheetStorage";
+import { supabase } from '@/integrations/supabase/client';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TicketHistory } from '@/components/TicketHistory';
+import { FileText } from 'lucide-react';
 
 interface TimesheetRow {
   id: string;
@@ -144,7 +148,49 @@ const Timesheet = () => {
         return;
       }
 
+      // Save to local storage (existing functionality)
       saveSubmittedTimesheet(allRowsToSubmit);
+
+      // Save to Supabase ticket history
+      const currentUser = localStorage.getItem('currentUser');
+      const userRole = localStorage.getItem('userRole');
+      const userEmail = localStorage.getItem('userEmail');
+      const employeeId = localStorage.getItem('employeeId');
+      
+      const userId = currentUser || employeeId || userEmail || 'unknown';
+      const submissionDate = new Date().toISOString().split('T')[0];
+
+      // Insert each ticket into the history table
+      for (const row of allRowsToSubmit) {
+        if (row.ticketNumber) {
+          const historyEntry = {
+            user_id: userId,
+            submission_date: submissionDate,
+            ticket_number: row.ticketNumber,
+            university: row.university || '',
+            domain: row.domain || '',
+            category: row.category,
+            subcategory: row.subCategory || '',
+            activity_type: row.activityType || '',
+            task_name: row.taskName || '',
+            stub_name: row.stubName || '',
+            client_type: row.clientType || '',
+            status: row.status || 'Completed',
+            received_date: row.receivedDate || '',
+            ticket_count: row.ticketCount || 1,
+            time_logged_seconds: row.totalTime || 0,
+            comments: row.comments || ''
+          };
+
+          const { error } = await supabase
+            .from('ticket_history')
+            .insert(historyEntry);
+
+          if (error) {
+            console.error('Error saving ticket to history:', error);
+          }
+        }
+      }
       
       // Clear session storage and current working data on submit
       clearSessionEntries();
@@ -158,6 +204,7 @@ const Timesheet = () => {
       console.log("Submitting timesheet data:", allRowsToSubmit);
       navigate("/dashboard");
     } catch (error) {
+      console.error("Error submitting timesheet:", error);
       toast({
         title: "Submission Failed",
         description: "There was an error submitting your timesheet. Please try again.",
@@ -236,6 +283,12 @@ const Timesheet = () => {
 
   // Get dropdown data from uploaded lists
   const dropdownData = getSimpleDropdownData();
+  
+  // Get current user ID for history
+  const currentUser = localStorage.getItem('currentUser');
+  const userEmail = localStorage.getItem('userEmail');
+  const employeeId = localStorage.getItem('employeeId');
+  const userId = currentUser || employeeId || userEmail || 'unknown';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-surface to-surface-elevated">
@@ -254,8 +307,8 @@ const Timesheet = () => {
                 Back to Dashboard
               </Button>
               <div>
-                <h1 className="text-xl font-semibold text-foreground">Daily Timesheet</h1>
-                <p className="text-sm text-foreground-muted">Track your work hours</p>
+                <h1 className="text-xl font-semibold text-foreground">Timesheet Management</h1>
+                <p className="text-sm text-foreground-muted">Track your work hours and view history</p>
               </div>
             </div>
             
@@ -285,106 +338,119 @@ const Timesheet = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Availability Tracker */}
-        <AvailabilityTracker
-          totalLoggedTime={timerSummary.totalLoggedTime}
-          breakTime={globalBreakTime + (isOnGlobalBreak && globalBreakStartTime ? Math.floor((Date.now() - globalBreakStartTime) / 1000) : 0)}
-          isOnBreak={isOnGlobalBreak}
-          targetHours={8}
-          workTargetHours={8}
-        />
+        <Tabs defaultValue="timesheet" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="timesheet">Daily Timesheet</TabsTrigger>
+            <TabsTrigger value="history">My Ticket History</TabsTrigger>
+          </TabsList>
 
-        {/* Saved Entries List */}
-        {savedEntries.length > 0 && (
-          <Card className="mb-6">
-            <CardHeader>
-              <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Saved Entries ({savedEntries.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {savedEntries.map((entry, index) => (
-                  <div key={`${entry.id}-${entry.savedAt}`} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border">
-                    <div className="flex items-center gap-4">
-                      <Badge variant="default" className="text-xs">
-                        {entry.status}
-                      </Badge>
-                      <div className="text-sm">
-                        <span className="font-medium">{entry.ticketNumber || 'No Ticket'}</span>
-                        {entry.category && (
-                          <span className="text-foreground-muted ml-2">- {entry.category}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-foreground-muted">
-                      <span>{Math.floor((entry.totalTime || 0) / 60)}min {((entry.totalTime || 0) % 60)}s</span>
-                      <span>•</span>
-                      <span>{new Date(entry.savedAt).toLocaleTimeString()}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Current Working Entries */}
-        <div className="space-y-4">
-          <CardTitle className="text-lg font-semibold text-foreground">
-            Current Timesheet Entries
-          </CardTitle>
-          
-          {/* Column Headers */}
-          <div className="grid grid-cols-6 lg:grid-cols-12 gap-2 text-xs font-medium text-foreground-muted bg-muted/50 p-2 rounded-md border">
-            <div className="col-span-1">Ticket #</div>
-            <div className="col-span-1 lg:col-span-2">Stub Name</div>
-            <div className="col-span-1 lg:col-span-2">University</div>
-            <div className="col-span-1">Domain</div>
-            <div className="col-span-1 lg:col-span-2">Main Category</div>
-            <div className="col-span-1 lg:col-span-2">Sub Category</div>
-            <div className="col-span-1">Activity Type</div>
-            <div className="col-span-1">Client Type</div>
-            <div className="col-span-1">Status</div>
-            <div className="col-span-1">Data Count</div>
-            <div className="col-span-1">AHT / Unit</div>
-            <div className="col-span-1">Received Date</div>
-          </div>
-          
-          {rows.map((row) => (
-            <TimerRow
-              key={row.id}
-              row={row}
-              dropdownData={dropdownData}
-              onUpdate={updateRow}
-              onDelete={deleteRow}
-              onStartTimer={handleStartTimer}
-              onPauseTimer={handlePauseTimer}
-              onResumeTimer={handleResumeTimer}
-              isOnGlobalBreak={isOnGlobalBreak}
+          <TabsContent value="timesheet" className="space-y-6">
+            {/* Availability Tracker */}
+            <AvailabilityTracker
+              totalLoggedTime={timerSummary.totalLoggedTime}
+              breakTime={globalBreakTime + (isOnGlobalBreak && globalBreakStartTime ? Math.floor((Date.now() - globalBreakStartTime) / 1000) : 0)}
+              isOnBreak={isOnGlobalBreak}
+              targetHours={8}
+              workTargetHours={8}
             />
-          ))}
-          
-          {rows.length === 0 && (
-            <div className="text-center py-8 text-foreground-muted">
-              <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No time entries yet. Click "Add Entry" to get started.</p>
-            </div>
-          )}
 
-          {/* Add Entry Button at Bottom */}
-          <div className="flex justify-center pt-4">
-            <Button
-              onClick={addNewRow}
-              size="sm"
-              className="bg-primary hover:bg-primary/90"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Entry
-            </Button>
-          </div>
-        </div>
+            {/* Saved Entries List */}
+            {savedEntries.length > 0 && (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+                    <Clock className="w-5 h-5" />
+                    Saved Entries ({savedEntries.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {savedEntries.map((entry, index) => (
+                      <div key={`${entry.id}-${entry.savedAt}`} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border">
+                        <div className="flex items-center gap-4">
+                          <Badge variant="default" className="text-xs">
+                            {entry.status}
+                          </Badge>
+                          <div className="text-sm">
+                            <span className="font-medium">{entry.ticketNumber || 'No Ticket'}</span>
+                            {entry.category && (
+                              <span className="text-foreground-muted ml-2">- {entry.category}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-foreground-muted">
+                          <span>{Math.floor((entry.totalTime || 0) / 60)}min {((entry.totalTime || 0) % 60)}s</span>
+                          <span>•</span>
+                          <span>{new Date(entry.savedAt).toLocaleTimeString()}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Current Working Entries */}
+            <div className="space-y-4">
+              <CardTitle className="text-lg font-semibold text-foreground">
+                Current Timesheet Entries
+              </CardTitle>
+              
+              {/* Column Headers */}
+              <div className="grid grid-cols-6 lg:grid-cols-12 gap-2 text-xs font-medium text-foreground-muted bg-muted/50 p-2 rounded-md border">
+                <div className="col-span-1">Ticket #</div>
+                <div className="col-span-1 lg:col-span-2">Stub Name</div>
+                <div className="col-span-1 lg:col-span-2">University</div>
+                <div className="col-span-1">Domain</div>
+                <div className="col-span-1 lg:col-span-2">Main Category</div>
+                <div className="col-span-1 lg:col-span-2">Sub Category</div>
+                <div className="col-span-1">Activity Type</div>
+                <div className="col-span-1">Client Type</div>
+                <div className="col-span-1">Status</div>
+                <div className="col-span-1">Data Count</div>
+                <div className="col-span-1">AHT / Unit</div>
+                <div className="col-span-1">Received Date</div>
+              </div>
+              
+              {rows.map((row) => (
+                <TimerRow
+                  key={row.id}
+                  row={row}
+                  dropdownData={dropdownData}
+                  onUpdate={updateRow}
+                  onDelete={deleteRow}
+                  onStartTimer={handleStartTimer}
+                  onPauseTimer={handlePauseTimer}
+                  onResumeTimer={handleResumeTimer}
+                  isOnGlobalBreak={isOnGlobalBreak}
+                />
+              ))}
+              
+              {rows.length === 0 && (
+                <div className="text-center py-8 text-foreground-muted">
+                  <Clock className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No time entries yet. Click "Add Entry" to get started.</p>
+                </div>
+              )}
+
+              {/* Add Entry Button at Bottom */}
+              <div className="flex justify-center pt-4">
+                <Button
+                  onClick={addNewRow}
+                  size="sm"
+                  className="bg-primary hover:bg-primary/90"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Entry
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="history">
+            <TicketHistory userId={userId} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

@@ -38,6 +38,72 @@ export type Database = {
         }
         Relationships: []
       }
+      ticket_history: {
+        Row: {
+          activity_type: string | null
+          category: string
+          client_type: string | null
+          comments: string | null
+          created_at: string
+          domain: string | null
+          id: string
+          received_date: string | null
+          status: string
+          stub_name: string | null
+          subcategory: string | null
+          submission_date: string
+          task_name: string | null
+          ticket_count: number | null
+          ticket_number: string
+          time_logged_seconds: number
+          university: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_type?: string | null
+          category: string
+          client_type?: string | null
+          comments?: string | null
+          created_at?: string
+          domain?: string | null
+          id?: string
+          received_date?: string | null
+          status?: string
+          stub_name?: string | null
+          subcategory?: string | null
+          submission_date: string
+          task_name?: string | null
+          ticket_count?: number | null
+          ticket_number: string
+          time_logged_seconds?: number
+          university?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: string | null
+          category?: string
+          client_type?: string | null
+          comments?: string | null
+          created_at?: string
+          domain?: string | null
+          id?: string
+          received_date?: string | null
+          status?: string
+          stub_name?: string | null
+          subcategory?: string | null
+          submission_date?: string
+          task_name?: string | null
+          ticket_count?: number | null
+          ticket_number?: string
+          time_logged_seconds?: number
+          university?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       timesheet_sessions: {
         Row: {
           created_at: string
