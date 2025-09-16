@@ -22,7 +22,6 @@ interface TimesheetRow {
   taskName: string;
   university: string;
   domain: string;
-  clientType: string;
   status: string;
   receivedDate: string;
   ticketCount: number;
@@ -196,7 +195,7 @@ const TimerRow: React.FC<TimerRowProps> = ({
             </div>
 
             {/* Form Fields Grid - Excel-like Row */}
-            <div className="grid grid-cols-6 lg:grid-cols-11 gap-2 text-xs">
+            <div className="grid grid-cols-6 lg:grid-cols-10 gap-2 text-xs">
             {/* Ticket Number */}
             <div className="col-span-1">
               <Input
@@ -275,17 +274,6 @@ const TimerRow: React.FC<TimerRowProps> = ({
               </Select>
             </div>
 
-            {/* Client Type - Compact */}
-            <div className="col-span-1">
-              <SearchableSelect
-                value={row.clientType || ""}
-                onValueChange={(value) => onUpdate(row.id, { clientType: value })}
-                options={dropdownData.clientTypes}
-                placeholder="Client"
-                searchPlaceholder="Search client types..."
-                className="h-7 text-xs"
-              />
-            </div>
 
             {/* Status - Compact */}
             <div className="col-span-1">

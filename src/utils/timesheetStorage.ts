@@ -7,7 +7,7 @@ interface TimesheetRow {
   taskName: string;
   university: string;
   domain: string;
-  clientType: string;
+  
   status: string;
   receivedDate: string;
   ticketCount: number;

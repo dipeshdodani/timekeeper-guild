@@ -25,7 +25,6 @@ interface TimesheetRow {
   taskName: string;
   university: string;
   domain: string;
-  clientType: string;
   status: string;
   receivedDate: string;
   ticketCount: number;
@@ -79,7 +78,7 @@ const Timesheet = () => {
       taskName: "",
       university: "",
       domain: "",
-      clientType: "",
+      
       status: "In Progress",
       receivedDate: new Date().toISOString().split('T')[0],
       ticketCount: 1,
@@ -171,7 +170,7 @@ const Timesheet = () => {
             subcategory: row.subCategory || '',
             activity_type: row.activityType || '',
             task_name: row.taskName || '',
-            client_type: row.clientType || '',
+            
             status: row.status || 'Completed',
             received_date: row.receivedDate || '',
             ticket_count: row.ticketCount || 1,
