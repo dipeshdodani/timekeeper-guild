@@ -5,7 +5,6 @@ interface TimesheetRow {
   subCategory: string;
   activityType: string;
   taskName: string;
-  stubName: string;
   university: string;
   domain: string;
   clientType: string;

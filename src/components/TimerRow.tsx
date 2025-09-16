@@ -20,7 +20,6 @@ interface TimesheetRow {
   subCategory: string;
   activityType: string;
   taskName: string;
-  stubName: string;
   university: string;
   domain: string;
   clientType: string;
@@ -197,7 +196,7 @@ const TimerRow: React.FC<TimerRowProps> = ({
             </div>
 
             {/* Form Fields Grid - Excel-like Row */}
-            <div className="grid grid-cols-6 lg:grid-cols-12 gap-2 text-xs">
+            <div className="grid grid-cols-6 lg:grid-cols-11 gap-2 text-xs">
             {/* Ticket Number */}
             <div className="col-span-1">
               <Input
@@ -205,18 +204,6 @@ const TimerRow: React.FC<TimerRowProps> = ({
                 onChange={(e) => onUpdate(row.id, { ticketNumber: e.target.value })}
                 placeholder="Ticket #"
                 className="h-7 text-xs border-border"
-              />
-            </div>
-
-            {/* Stub Name */}
-            <div className="col-span-1 lg:col-span-2">
-              <SearchableSelect
-                value={row.stubName || ""}
-                onValueChange={(value) => onUpdate(row.id, { stubName: value })}
-                options={dropdownData.stubs}
-                placeholder="Stub"
-                searchPlaceholder="Search stubs..."
-                className="h-7 text-xs"
               />
             </div>
 

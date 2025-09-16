@@ -23,7 +23,6 @@ interface TimesheetRow {
   subCategory: string;
   activityType: string;
   taskName: string;
-  stubName: string;
   university: string;
   domain: string;
   clientType: string;
@@ -78,7 +77,6 @@ const Timesheet = () => {
       subCategory: "",
       activityType: "",
       taskName: "",
-      stubName: "",
       university: "",
       domain: "",
       clientType: "",
@@ -173,7 +171,6 @@ const Timesheet = () => {
             subcategory: row.subCategory || '',
             activity_type: row.activityType || '',
             task_name: row.taskName || '',
-            stub_name: row.stubName || '',
             client_type: row.clientType || '',
             status: row.status || 'Completed',
             received_date: row.receivedDate || '',
@@ -397,9 +394,8 @@ const Timesheet = () => {
               </CardTitle>
               
               {/* Column Headers */}
-              <div className="grid grid-cols-6 lg:grid-cols-12 gap-2 text-xs font-medium text-foreground-muted bg-muted/50 p-2 rounded-md border">
+              <div className="grid grid-cols-6 lg:grid-cols-11 gap-2 text-xs font-medium text-foreground-muted bg-muted/50 p-2 rounded-md border">
                 <div className="col-span-1">Ticket #</div>
-                <div className="col-span-1 lg:col-span-2">Stub Name</div>
                 <div className="col-span-1 lg:col-span-2">University</div>
                 <div className="col-span-1">Domain</div>
                 <div className="col-span-1 lg:col-span-2">Main Category</div>
