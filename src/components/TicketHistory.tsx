@@ -5,25 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Calendar, Search, Clock, FileText } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
+import { getTicketHistory, TicketHistoryEntry, formatAHT } from '@/services/UserStatsService';
 
-interface TicketHistoryEntry {
-  id: string;
-  submission_date: string;
-  ticket_number: string;
-  university: string;
-  domain: string;
-  category: string;
-  subcategory: string;
-  activity_type: string;
-  task_name: string;
-  status: string;
-  time_logged_seconds: number;
-  comments: string;
-  created_at: string;
-}
+// TicketHistoryEntry is now imported from UserStatsService
 
 interface TicketHistoryProps {
   userId: string;
@@ -40,25 +26,9 @@ export const TicketHistory: React.FC<TicketHistoryProps> = ({ userId }) => {
   const fetchTicketHistory = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('ticket_history')
-        .select('*')
-        .eq('user_id', userId)
-        .order('submission_date', { ascending: false })
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching ticket history:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load ticket history",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      setHistoryEntries(data || []);
-      setFilteredEntries(data || []);
+      const data = await getTicketHistory(userId);
+      setHistoryEntries(data);
+      setFilteredEntries(data);
     } catch (error) {
       console.error('Error fetching ticket history:', error);
       toast({
@@ -77,30 +47,33 @@ export const TicketHistory: React.FC<TicketHistoryProps> = ({ userId }) => {
     }
   }, [userId]);
 
-  const handleSearch = () => {
-    let filtered = historyEntries;
+  const handleSearch = async () => {
+    setLoading(true);
+    try {
+      let data: TicketHistoryEntry[];
 
-    if (searchDate) {
-      filtered = filtered.filter(entry => 
-        entry.submission_date === searchDate
-      );
+      if (searchDate) {
+        // Use exact date for search
+        data = await getTicketHistory(userId, searchDate, searchDate);
+      } else if (startDate || endDate) {
+        // Use date range
+        data = await getTicketHistory(userId, startDate, endDate);
+      } else {
+        // No filters, get all
+        data = await getTicketHistory(userId);
+      }
+
+      setFilteredEntries(data);
+    } catch (error) {
+      console.error('Error searching ticket history:', error);
+      toast({
+        title: "Error",
+        description: "Failed to search ticket history",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-
-    if (startDate && endDate) {
-      filtered = filtered.filter(entry => 
-        entry.submission_date >= startDate && entry.submission_date <= endDate
-      );
-    } else if (startDate) {
-      filtered = filtered.filter(entry => 
-        entry.submission_date >= startDate
-      );
-    } else if (endDate) {
-      filtered = filtered.filter(entry => 
-        entry.submission_date <= endDate
-      );
-    }
-
-    setFilteredEntries(filtered);
   };
 
   const clearFilters = () => {
@@ -110,19 +83,7 @@ export const TicketHistory: React.FC<TicketHistoryProps> = ({ userId }) => {
     setFilteredEntries(historyEntries);
   };
 
-  const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = seconds % 60;
-    
-    if (hours > 0) {
-      return `${hours}h ${minutes}m ${remainingSeconds}s`;
-    } else if (minutes > 0) {
-      return `${minutes}m ${remainingSeconds}s`;
-    } else {
-      return `${remainingSeconds}s`;
-    }
-  };
+  // formatTime is now imported as formatAHT from UserStatsService
 
   const groupEntriesByDate = (entries: TicketHistoryEntry[]) => {
     const grouped = entries.reduce((acc, entry) => {
@@ -255,10 +216,10 @@ export const TicketHistory: React.FC<TicketHistoryProps> = ({ userId }) => {
                               </div>
                               
                               <div className="space-y-1">
-                                <div className="flex items-center gap-1 text-sm font-medium">
-                                  <Clock className="w-4 h-4" />
-                                  {formatTime(entry.time_logged_seconds)}
-                                </div>
+                              <div className="flex items-center gap-1 text-sm font-medium">
+                                <Clock className="w-4 h-4" />
+                                {formatAHT(entry.time_logged_seconds)}
+                              </div>
                                 {entry.comments && (
                                   <div className="text-sm">
                                     <span className="font-medium">Comments:</span>

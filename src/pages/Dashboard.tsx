@@ -17,12 +17,21 @@ import {
   FileText,
   Database
 } from "lucide-react";
+import { getUserStats, formatAHT, UserDayStats } from "@/services/UserStatsService";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [userRole, setUserRole] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [employeeId, setEmployeeId] = useState("");
+  const [userStats, setUserStats] = useState<UserDayStats>({
+    todayHours: 0,
+    completedTasks: 0,
+    avgAHT: 0,
+    weekHours: 0,
+    ticketHistory: []
+  });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const role = localStorage.getItem("userRole");
@@ -38,6 +47,23 @@ const Dashboard = () => {
     setUserRole(role);
     setUserEmail(email || "");
     setEmployeeId(empId || "");
+
+    // Load user stats
+    const loadStats = async () => {
+      setLoading(true);
+      try {
+        const currentUser = localStorage.getItem('currentUser');
+        const userId = currentUser || empId || email || 'unknown';
+        const stats = await getUserStats(userId);
+        setUserStats(stats);
+      } catch (error) {
+        console.error('Error loading user stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadStats();
   }, [navigate]);
 
   const handleLogout = () => {
@@ -68,14 +94,8 @@ const Dashboard = () => {
     return variantMap[role] || "default";
   };
 
-  // Mock data for dashboard metrics
-  const todayMetrics = {
-    totalHours: 6.5,
-    targetHours: 9,
-    completedTasks: 12,
-    pendingTasks: 3,
-    avgAHT: "24min"
-  };
+  // Target hours (could be made configurable per user)
+  const targetHours = 9;
 
   const quickActions = [
     {
@@ -181,10 +201,10 @@ const Dashboard = () => {
                 <div>
                   <p className="text-sm font-medium text-foreground-muted">Today's Hours</p>
                   <p className="text-2xl font-bold text-foreground">
-                    {todayMetrics.totalHours}h
+                    {loading ? "--" : `${userStats.todayHours}h`}
                   </p>
                   <p className="text-sm text-foreground-subtle">
-                    of {todayMetrics.targetHours}h target
+                    of {targetHours}h target
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-primary-light flex items-center justify-center">
@@ -200,10 +220,10 @@ const Dashboard = () => {
                 <div>
                   <p className="text-sm font-medium text-foreground-muted">Completed Tasks</p>
                   <p className="text-2xl font-bold text-success">
-                    {todayMetrics.completedTasks}
+                    {loading ? "--" : userStats.completedTasks}
                   </p>
                   <p className="text-sm text-foreground-subtle">
-                    {todayMetrics.pendingTasks} pending
+                    tasks completed
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-success to-success/80 flex items-center justify-center">
@@ -219,10 +239,10 @@ const Dashboard = () => {
                 <div>
                   <p className="text-sm font-medium text-foreground-muted">Avg AHT</p>
                   <p className="text-2xl font-bold text-foreground">
-                    {todayMetrics.avgAHT}
+                    {loading ? "--" : formatAHT(userStats.avgAHT)}
                   </p>
-                  <p className="text-sm text-success">
-                    ↓ 5% from yesterday
+                  <p className="text-sm text-foreground-subtle">
+                    average handling time
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-warning to-warning/80 flex items-center justify-center">
@@ -238,10 +258,10 @@ const Dashboard = () => {
                 <div>
                   <p className="text-sm font-medium text-foreground-muted">This Week</p>
                   <p className="text-2xl font-bold text-foreground">
-                    32.5h
+                    {loading ? "--" : `${userStats.weekHours}h`}
                   </p>
                   <p className="text-sm text-foreground-subtle">
-                    4 days tracked
+                    this week
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-accent to-accent/80 flex items-center justify-center">
@@ -299,12 +319,14 @@ const Dashboard = () => {
                 <div>
                   <div className="flex justify-between text-sm mb-2">
                     <span className="text-foreground-muted">Daily Target Progress</span>
-                    <span className="text-foreground">{todayMetrics.totalHours}h / {todayMetrics.targetHours}h</span>
+                    <span className="text-foreground">
+                      {loading ? "--" : `${userStats.todayHours}h / ${targetHours}h`}
+                    </span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2">
                     <div 
                       className="bg-gradient-to-r from-primary to-primary-glow h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${(todayMetrics.totalHours / todayMetrics.targetHours) * 100}%` }}
+                      style={{ width: loading ? '0%' : `${Math.min((userStats.todayHours / targetHours) * 100, 100)}%` }}
                     ></div>
                   </div>
                 </div>
@@ -312,7 +334,7 @@ const Dashboard = () => {
                 <div className="pt-4 border-t border-border">
                   <p className="text-sm text-foreground-muted mb-2">Remaining time needed:</p>
                   <p className="text-lg font-semibold text-warning">
-                    {(todayMetrics.targetHours - todayMetrics.totalHours).toFixed(1)}h
+                    {loading ? "--" : `${Math.max(targetHours - userStats.todayHours, 0).toFixed(1)}h`}
                   </p>
                 </div>
               </div>
