@@ -177,6 +177,13 @@ const ReportsContent = () => {
       navigate("/");
       return;
     }
+    
+    // Block access for Team Member and SME roles
+    if (role === "team-member" || role === "sme") {
+      navigate("/dashboard");
+      return;
+    }
+    
     setUserRole(role);
   }, [navigate]);
 

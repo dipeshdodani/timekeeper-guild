@@ -104,15 +104,19 @@ const Dashboard = () => {
       icon: Play,
       action: () => navigate("/timesheet"),
       variant: "default" as const
-    },
-    {
+    }
+  ];
+
+  // Add View Reports for roles other than Team Member and SME
+  if (userRole !== "team-member" && userRole !== "sme") {
+    quickActions.push({
       title: "View Reports", 
       description: "Access your time tracking reports",
       icon: FileText,
       action: () => navigate("/reports"),
-      variant: "secondary" as const
-    }
-  ];
+      variant: "default" as const
+    });
+  }
 
   // Add role-specific actions
   if (userRole === "sme" || userRole === "admin" || userRole === "super-user") {
@@ -121,7 +125,7 @@ const Dashboard = () => {
       description: "Add or modify task definitions",
       icon: Plus,
       action: () => navigate("/tasks"),
-      variant: "secondary" as const
+      variant: "default" as const
     });
   }
 
@@ -131,7 +135,7 @@ const Dashboard = () => {
       description: "Manage team members and settings", 
       icon: Users,
       action: () => navigate("/team"),
-      variant: "secondary" as const
+      variant: "default" as const
     });
     
     quickActions.push({
@@ -139,7 +143,7 @@ const Dashboard = () => {
       description: "Manage dropdown lists and data", 
       icon: Database,
       action: () => navigate("/dropdown-management"),
-      variant: "secondary" as const
+      variant: "default" as const
     });
   }
 
