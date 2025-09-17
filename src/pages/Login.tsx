@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Clock, Shield, Users } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const Login = () => {
   const [loginType, setLoginType] = useState<"employee" | "super-user">("employee");
@@ -37,15 +38,56 @@ const Login = () => {
             description: "Please fill in all required fields (Email and Password).",
             variant: "destructive",
           });
+          setIsLoading(false);
           return;
         }
         
-        localStorage.setItem("userRole", "super-user");
-        localStorage.setItem("userEmail", email);
+        // Authenticate super user via database
+        const { data, error } = await supabase.rpc('authenticate_employee', {
+          input_employee_id: null,
+          input_email: email,
+          input_password: password
+        });
+        
+        if (error) {
+          console.error('Authentication error:', error);
+          toast({
+            title: "Login Failed",
+            description: "Invalid username or password",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        
+        if (!data || data.length === 0 || !data[0].auth_success) {
+          toast({
+            title: "Login Failed",
+            description: "Invalid username or password",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        
+        const userRecord = data[0];
+        if (userRecord.role !== 'super-user') {
+          toast({
+            title: "Access Denied",
+            description: "You don't have super-user access. Please use employee login.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        
+        localStorage.setItem("userRole", userRecord.role);
+        localStorage.setItem("userEmail", userRecord.email);
+        localStorage.setItem("currentUser", userRecord.full_name || userRecord.email);
         
         toast({
           title: "Login Successful",
-          description: `Welcome back, Super User!`,
+          description: `Welcome back, ${userRecord.full_name || 'Super User'}!`,
         });
         
         navigate("/dashboard");
@@ -57,20 +99,62 @@ const Login = () => {
             description: "Please fill in all required fields (Employee ID, Password, and Role).",
             variant: "destructive",
           });
+          setIsLoading(false);
           return;
         }
         
-        localStorage.setItem("userRole", role);
-        localStorage.setItem("employeeId", employeeId);
+        // Authenticate employee via database
+        const { data, error } = await supabase.rpc('authenticate_employee', {
+          input_employee_id: employeeId,
+          input_email: null,
+          input_password: password
+        });
+        
+        if (error) {
+          console.error('Authentication error:', error);
+          toast({
+            title: "Login Failed",
+            description: "Invalid username or password",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        
+        if (!data || data.length === 0 || !data[0].auth_success) {
+          toast({
+            title: "Login Failed",
+            description: "Invalid username or password",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        
+        const userRecord = data[0];
+        if (userRecord.role !== role) {
+          toast({
+            title: "Role Mismatch",
+            description: "The selected role doesn't match your assigned role. Please contact your administrator.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        
+        localStorage.setItem("userRole", userRecord.role);
+        localStorage.setItem("employeeId", userRecord.employee_id);
+        localStorage.setItem("currentUser", userRecord.full_name || userRecord.employee_id);
         
         toast({
           title: "Login Successful",
-          description: `Welcome back, ${role === 'team-member' ? 'Team Member' : role.toUpperCase()}!`,
+          description: `Welcome back, ${userRecord.full_name || userRecord.employee_id}!`,
         });
         
         navigate("/dashboard");
       }
     } catch (error) {
+      console.error('Login error:', error);
       toast({
         title: "Login Error",
         description: "An unexpected error occurred. Please try again.",
