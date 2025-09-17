@@ -393,14 +393,13 @@ const Timesheet = () => {
               </CardTitle>
               
               {/* Column Headers */}
-              <div className="grid grid-cols-6 lg:grid-cols-11 gap-2 text-xs font-medium text-foreground-muted bg-muted/50 p-2 rounded-md border">
+              <div className="grid grid-cols-6 lg:grid-cols-10 gap-2 text-xs font-medium text-foreground-muted bg-muted/50 p-2 rounded-md border">
                 <div className="col-span-1">Ticket #</div>
                 <div className="col-span-1 lg:col-span-2">University</div>
                 <div className="col-span-1">Domain</div>
                 <div className="col-span-1 lg:col-span-2">Main Category</div>
                 <div className="col-span-1 lg:col-span-2">Sub Category</div>
                 <div className="col-span-1">Activity Type</div>
-                <div className="col-span-1">Client Type</div>
                 <div className="col-span-1">Status</div>
                 <div className="col-span-1">Data Count</div>
                 <div className="col-span-1">AHT / Unit</div>
