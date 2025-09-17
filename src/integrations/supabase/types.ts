@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      employees: {
+        Row: {
+          created_at: string
+          email: string | null
+          employee_id: string
+          full_name: string | null
+          id: string
+          is_active: boolean
+          password_hash: string
+          role: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          employee_id: string
+          full_name?: string | null
+          id?: string
+          is_active?: boolean
+          password_hash: string
+          role: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          employee_id?: string
+          full_name?: string | null
+          id?: string
+          is_active?: boolean
+          password_hash?: string
+          role?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -145,7 +181,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      authenticate_employee: {
+        Args: {
+          input_email: string
+          input_employee_id: string
+          input_password: string
+        }
+        Returns: {
+          auth_success: boolean
+          email: string
+          employee_id: string
+          full_name: string
+          role: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
