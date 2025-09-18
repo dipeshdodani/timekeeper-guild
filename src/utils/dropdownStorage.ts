@@ -5,10 +5,10 @@ const STORAGE_KEY = "timesheet_dropdown_data";
 // Default data to populate initially
 const DEFAULT_DROPDOWN_DATA: DropdownData = {
   universities: [
-    { name: "Harvard University", domain: "Computer Science" },
-    { name: "MIT", domain: "Engineering" },
-    { name: "Stanford University", domain: "Computer Science" },
-    { name: "University of California", domain: "Business Administration" }
+    { name: "Harvard University" },
+    { name: "MIT" },
+    { name: "Stanford University" },
+    { name: "University of California" }
   ],
   domains: [
     { name: "Computer Science" },

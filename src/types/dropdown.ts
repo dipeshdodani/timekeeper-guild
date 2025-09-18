@@ -7,7 +7,6 @@ export interface TaskWithAHT {
 
 export interface University {
   name: string;
-  domain: string;
 }
 
 export interface Domain {
@@ -45,22 +44,13 @@ export interface BulkUploadResult {
   errors: BulkUploadError[];
 }
 
-export type DropdownType = 'universities' | 'domains' | 'stubs' | 'tasks';
+export type DropdownType = 'universities' | 'domains';
 
 export const DROPDOWN_TEMPLATES = {
   universities: [
-    { field: 'University', example: 'Harvard University' },
-    { field: 'Domain', example: 'Computer Science' }
+    { field: 'University', example: 'Harvard University' }
   ],
   domains: [
     { field: 'Domain', example: 'Computer Science' }
-  ],
-  stubs: [
-    { field: 'Stub_Name', example: 'Student Support' }
-  ],
-  tasks: [
-    { field: 'Category', example: 'Customer Support' },
-    { field: 'Sub_Category', example: 'Phone Support' },
-    { field: 'AHT', example: '15' }
   ]
 };

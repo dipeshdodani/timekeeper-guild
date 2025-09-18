@@ -125,18 +125,6 @@ export const DropdownBulkUpload = ({
         }
       });
 
-      // Special validation for tasks with AHT
-      if (type === 'tasks' && row['AHT_Minutes']) {
-        const aht = parseInt(row['AHT_Minutes']);
-        if (isNaN(aht) || aht <= 0) {
-          errors.push({
-            row: index + 2,
-            field: 'AHT_Minutes',
-            value: row['AHT_Minutes'],
-            error: 'AHT must be a positive number'
-          });
-        }
-      }
     });
 
     setValidationErrors(errors);

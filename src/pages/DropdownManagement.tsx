@@ -22,18 +22,14 @@ import { DropdownBulkUpload } from "@/components/DropdownBulkUpload";
 import { 
   getDropdownData, 
   updateUniversities, 
-  updateDomains, 
-  updateStubs, 
-  updateTasks 
+  updateDomains
 } from "@/utils/dropdownStorage";
 import { 
   DropdownData, 
   DropdownType, 
   BulkUploadResult, 
   University as UniversityType, 
-  Domain as DomainType, 
-  StubName as StubNameType, 
-  TaskWithAHT 
+  Domain as DomainType
 } from "@/types/dropdown";
 
 const DropdownManagement = () => {
@@ -74,8 +70,7 @@ const DropdownManagement = () => {
       switch (type) {
         case 'universities':
           processedData = data.map(row => ({
-            name: row.University,
-            domain: row.Domain
+            name: row.University
           }));
           updateUniversities(processedData as UniversityType[]);
           break;
@@ -85,22 +80,6 @@ const DropdownManagement = () => {
             name: row.Domain || row.domain || row.Name || row.name || ''
           }));
           updateDomains(processedData as DomainType[]);
-          break;
-          
-        case 'stubs':
-          processedData = data.map(row => ({
-            name: row.Stub_Name || row['Stub Name'] || row.Name || row.name || ''
-          }));
-          updateStubs(processedData as StubNameType[]);
-          break;
-          
-        case 'tasks':
-          processedData = data.map(row => ({
-            category: row.Category,
-            subCategory: row.Sub_Category,
-            aht: parseInt(row.AHT) || 0
-          }));
-          updateTasks(processedData as TaskWithAHT[]);
           break;
       }
 
@@ -128,8 +107,8 @@ const DropdownManagement = () => {
     switch (type) {
       case 'universities':
         csvContent = [
-          ["University", "Domain"],
-          ...dropdownData.universities.map(u => [u.name, u.domain])
+          ["University"],
+          ...dropdownData.universities.map(u => [u.name])
         ].map(row => row.join(",")).join("\n");
         filename = "universities_export.csv";
         break;
@@ -140,22 +119,6 @@ const DropdownManagement = () => {
           ...dropdownData.domains.map(d => [d.name])
         ].map(row => row.join(",")).join("\n");
         filename = "domains_export.csv";
-        break;
-        
-      case 'stubs':
-        csvContent = [
-          ["Stub_Name"],
-          ...dropdownData.stubs.map(s => [s.name])
-        ].map(row => row.join(",")).join("\n");
-        filename = "stubs_export.csv";
-        break;
-        
-      case 'tasks':
-        csvContent = [
-          ["Category", "Sub_Category", "AHT"],
-          ...dropdownData.tasks.map(t => [t.category, t.subCategory, t.aht.toString()])
-        ].map(row => row.join(",")).join("\n");
-        filename = "tasks_export.csv";
         break;
     }
     
@@ -185,12 +148,6 @@ const DropdownManagement = () => {
       case 'domains':
         updateDomains([]);
         break;
-      case 'stubs':
-        updateStubs([]);
-        break;
-      case 'tasks':
-        updateTasks([]);
-        break;
     }
     
     loadDropdownData();
@@ -205,10 +162,10 @@ const DropdownManagement = () => {
     {
       id: 'universities' as DropdownType,
       title: 'Universities',
-      description: 'Manage university list with domain information',
+      description: 'Manage university list',
       icon: GraduationCap,
       data: dropdownData.universities,
-      columns: ['University', 'Domain']
+      columns: ['University']
     },
     {
       id: 'domains' as DropdownType,
@@ -217,22 +174,6 @@ const DropdownManagement = () => {
       icon: Globe,
       data: dropdownData.domains,
       columns: ['Domain']
-    },
-    {
-      id: 'stubs' as DropdownType,
-      title: 'Stub Names',
-      description: 'Manage stub names',
-      icon: FileText,
-      data: dropdownData.stubs,
-      columns: ['Stub Name']
-    },
-    {
-      id: 'tasks' as DropdownType,
-      title: 'Tasks with AHT',
-      description: 'Manage tasks with Category, Sub Category and Average Handle Time (AHT)',
-      icon: CheckSquare,
-      data: dropdownData.tasks,
-      columns: ['Category', 'Sub Category', 'AHT (min)']
     }
   ];
 
@@ -275,7 +216,7 @@ const DropdownManagement = () => {
 
         {/* Management Tabs */}
         <Tabs defaultValue="universities" className="space-y-6">
-          <TabsList className="grid grid-cols-4 w-full">
+          <TabsList className="grid grid-cols-2 w-full">
             {dropdownSections.map(section => (
               <TabsTrigger key={section.id} value={section.id} className="flex items-center gap-2">
                 <section.icon className="w-4 h-4" />
@@ -349,31 +290,16 @@ const DropdownManagement = () => {
                             </tr>
                           </thead>
                           <tbody>
-                            {section.data.map((item: any, index) => (
-                              <tr key={index} className="border-b border-border hover:bg-muted/50">
-                                {section.id === 'universities' && (
-                                  <>
-                                    <td className="p-3">{item.name}</td>
-                                    <td className="p-3">{item.domain}</td>
-                                  </>
-                                )}
-                                {section.id === 'domains' && (
-                                  <td className="p-3">{item.name}</td>
-                                )}
-                                {section.id === 'stubs' && (
-                                  <td className="p-3">{item.name}</td>
-                                )}
-                                {section.id === 'tasks' && (
-                                  <>
-                                    <td className="p-3">{item.category}</td>
-                                    <td className="p-3">{item.subCategory}</td>
-                                    <td className="p-3">
-                                      <Badge variant="secondary">{item.aht}min</Badge>
-                                    </td>
-                                  </>
-                                )}
-                              </tr>
-                            ))}
+                             {section.data.map((item: any, index) => (
+                               <tr key={index} className="border-b border-border hover:bg-muted/50">
+                                 {section.id === 'universities' && (
+                                   <td className="p-3">{item.name}</td>
+                                 )}
+                                 {section.id === 'domains' && (
+                                   <td className="p-3">{item.name}</td>
+                                 )}
+                               </tr>
+                             ))}
                           </tbody>
                         </table>
                       </div>
