@@ -12,7 +12,6 @@ interface Employee {
   id: string;
   employeeId: string;
   name: string;
-  email: string;
   role: 'team-member' | 'sme' | 'admin';
   team: string;
   status: 'active' | 'inactive';
@@ -133,8 +132,8 @@ const PasswordResetModal = ({ open, onClose, employee, onPasswordReset }: Passwo
           {/* Employee Info */}
           <div className="p-3 bg-muted/50 rounded-lg">
             <p className="font-medium">{employee.name}</p>
-            <p className="text-sm text-muted-foreground">{employee.email}</p>
             <p className="text-sm text-muted-foreground">ID: {employee.employeeId}</p>
+            <p className="text-sm text-muted-foreground">Team: {employee.team}</p>
           </div>
 
           {/* Password Input */}

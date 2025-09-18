@@ -18,7 +18,6 @@ interface Employee {
   id: string;
   employeeId: string;
   name: string;
-  email: string;
   role: "team-member" | "sme" | "admin";
   team: string;
   status: "active" | "inactive";
@@ -37,14 +36,12 @@ const TeamManagement = () => {
   const [newEmployee, setNewEmployee] = useState<{
     employeeId: string;
     name: string;
-    email: string;
     role: "team-member" | "sme" | "admin";
     team: string;
     password: string;
   }>({
     employeeId: "",
     name: "",
-    email: "",
     role: "team-member",
     team: "",
     password: ""
@@ -71,7 +68,6 @@ const TeamManagement = () => {
         id: "1",
         employeeId: "EMP001",
         name: "John Smith",
-        email: "john.smith@company.com",
         role: "team-member",
         team: "Support",
         status: "active",
@@ -83,7 +79,6 @@ const TeamManagement = () => {
         id: "2",
         employeeId: "EMP002", 
         name: "Sarah Johnson",
-        email: "sarah.johnson@company.com",
         role: "sme",
         team: "CI",
         status: "active",
@@ -95,7 +90,6 @@ const TeamManagement = () => {
         id: "3",
         employeeId: "EMP003",
         name: "Mike Wilson",
-        email: "mike.wilson@company.com", 
         role: "admin",
         team: "Migration",
         status: "active",
@@ -107,7 +101,6 @@ const TeamManagement = () => {
         id: "4",
         employeeId: "EMP004",
         name: "Lisa Chen",
-        email: "lisa.chen@company.com",
         role: "team-member",
         team: "Config", 
         status: "inactive",
@@ -119,7 +112,6 @@ const TeamManagement = () => {
         id: "5",
         employeeId: "EMP005",
         name: "David Brown",
-        email: "david.brown@company.com",
         role: "sme",
         team: "Exxat One",
         status: "active",
@@ -135,15 +127,14 @@ const TeamManagement = () => {
 
   const filteredEmployees = employees.filter(employee => {
     const matchesSearch = employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         employee.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         employee.email.toLowerCase().includes(searchTerm.toLowerCase());
+                         employee.employeeId.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = filterRole === "all" || employee.role === filterRole;
     const matchesTeam = filterTeam === "all" || employee.team === filterTeam;
     return matchesSearch && matchesRole && matchesTeam;
   });
 
   const handleAddEmployee = () => {
-    if (!newEmployee.employeeId || !newEmployee.name || !newEmployee.email || !newEmployee.team || !newEmployee.password) {
+    if (!newEmployee.employeeId || !newEmployee.name || !newEmployee.team || !newEmployee.password) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -174,7 +165,6 @@ const TeamManagement = () => {
     setNewEmployee({
       employeeId: "",
       name: "",
-      email: "",
       role: "team-member",
       team: "",
       password: ""
@@ -213,7 +203,7 @@ const TeamManagement = () => {
     if (!editingEmployee || !editingData) return;
 
     // Validation
-    if (!editingData.name || !editingData.email || !editingData.team) {
+    if (!editingData.name || !editingData.team) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -289,7 +279,6 @@ const TeamManagement = () => {
           id: Date.now().toString() + index,
           employeeId: row["Employee ID"] || "",
           name: row["Name"] || "",
-          email: row["Email"] || "",
           role: (row["Role"] as "team-member" | "sme" | "admin") || "team-member",
           team: row["Team"] || "",
           password: row["Password"] || "",
@@ -314,9 +303,9 @@ const TeamManagement = () => {
 
   const handleExportData = () => {
     const csvContent = [
-      ["Employee ID", "Name", "Email", "Role", "Team", "Status", "Join Date", "Last Active"],
+      ["Employee ID", "Name", "Role", "Team", "Status", "Join Date", "Last Active"],
       ...employees.map(emp => [
-        emp.employeeId, emp.name, emp.email, emp.role, emp.team, emp.status, emp.joinDate, emp.lastActive
+        emp.employeeId, emp.name, emp.role, emp.team, emp.status, emp.joinDate, emp.lastActive
       ])
     ].map(row => row.join(",")).join("\n");
 
@@ -367,7 +356,6 @@ const TeamManagement = () => {
   const bulkUploadValidation = {
     "Employee ID": (value: string) => 
       employees.some(emp => emp.employeeId === value) ? "Employee ID already exists" : null,
-    "Email": (value: string) => !value.includes("@") ? "Invalid email format" : null,
     "Role": (value: string) => !["team-member", "sme", "admin"].includes(value) ? "Role must be team-member, sme, or admin" : null,
     "Team": (value: string) => !teams.includes(value) ? `Team must be one of: ${teams.join(", ")}` : null,
     "Password": (value: string) => {
@@ -385,7 +373,6 @@ const TeamManagement = () => {
     {
       "Employee ID": "EMP006",
       "Name": "John Doe",
-      "Email": "john.doe@company.com",
       "Role": "team-member",
       "Team": "Support",
       "Password": "tempPassword123"
@@ -397,7 +384,7 @@ const TeamManagement = () => {
       <div className="min-h-screen bg-gradient-to-br from-background via-surface to-surface-elevated p-6">
         <BulkUpload
           title="Bulk Upload Team Members"
-          templateColumns={["Employee ID", "Name", "Email", "Role", "Team", "Password"]}
+          templateColumns={["Employee ID", "Name", "Role", "Team", "Password"]}
           sampleData={sampleData}
           onUpload={handleBulkUploadData}
           onClose={() => setShowBulkUpload(false)}
@@ -406,7 +393,6 @@ const TeamManagement = () => {
             description: "Upload team members with their login credentials. All fields are required.",
             requirements: [
               "Unique Employee ID for each member", 
-              "Valid email address format",
               "Password must be at least 8 characters",
               "Password must contain uppercase, lowercase, number, and special character"
             ],
@@ -417,7 +403,6 @@ const TeamManagement = () => {
             example: {
               'Employee ID': 'EMP006',
               'Name': 'Alex Johnson', 
-              'Email': 'alex.johnson@company.com',
               'Role': 'team-member',
               'Team': 'Support',
               'Password': 'SecurePass123!'
@@ -569,17 +554,6 @@ const TeamManagement = () => {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="email">Email *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={newEmployee.email}
-                    onChange={(e) => setNewEmployee(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="john.doe@company.com"
-                    className="bg-surface border-border"
-                  />
-                </div>
-                <div>
                   <Label htmlFor="password">Password *</Label>
                   <Input
                     id="password"
@@ -648,7 +622,6 @@ const TeamManagement = () => {
                 </TableHead>
                 <TableHead>Employee ID</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Team</TableHead>
                 <TableHead>Status</TableHead>
@@ -677,28 +650,17 @@ const TeamManagement = () => {
                       employee.employeeId
                     )}
                   </TableCell>
-                  <TableCell>
-                    {editingEmployee === employee.id ? (
-                      <Input
-                        value={editingData.name || ""}
-                        onChange={(e) => setEditingData(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-32"
-                      />
-                    ) : (
-                      employee.name
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {editingEmployee === employee.id ? (
-                      <Input
-                        value={editingData.email || ""}
-                        onChange={(e) => setEditingData(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-48"
-                      />
-                    ) : (
-                      employee.email
-                    )}
-                  </TableCell>
+                   <TableCell>
+                     {editingEmployee === employee.id ? (
+                       <Input
+                         value={editingData.name || ""}
+                         onChange={(e) => setEditingData(prev => ({ ...prev, name: e.target.value }))}
+                         className="w-32"
+                       />
+                     ) : (
+                       employee.name
+                     )}
+                   </TableCell>
                   <TableCell>
                     {editingEmployee === employee.id ? (
                       <Select 
