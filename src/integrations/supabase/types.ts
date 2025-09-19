@@ -22,8 +22,11 @@ export type Database = {
           full_name: string | null
           id: string
           is_active: boolean
+          join_date: string | null
+          last_active: string | null
           password_hash: string
           role: string
+          team: string | null
           updated_at: string
         }
         Insert: {
@@ -33,8 +36,11 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_active?: boolean
+          join_date?: string | null
+          last_active?: string | null
           password_hash: string
           role: string
+          team?: string | null
           updated_at?: string
         }
         Update: {
@@ -44,8 +50,11 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_active?: boolean
+          join_date?: string | null
+          last_active?: string | null
           password_hash?: string
           role?: string
+          team?: string | null
           updated_at?: string
         }
         Relationships: []
