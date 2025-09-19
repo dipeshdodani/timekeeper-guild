@@ -10,14 +10,14 @@ import { useToast } from "@/hooks/use-toast";
 
 interface Employee {
   id: string;
-  employeeId: string;
-  name: string;
-  role: 'team-member' | 'sme' | 'admin';
+  employee_id: string;
+  full_name: string;
+  role: string;
   team: string;
-  status: 'active' | 'inactive';
-  joinDate: string;
-  lastActive: string;
-  password?: string;
+  is_active: boolean;
+  join_date: string;
+  last_active: string;
+  password_hash: string;
 }
 
 interface PasswordResetModalProps {
@@ -103,7 +103,7 @@ const PasswordResetModal = ({ open, onClose, employee, onPasswordReset }: Passwo
     
     toast({
       title: "Password Reset",
-      description: `Password updated for ${employee.name}`,
+      description: `Password updated for ${employee.full_name}`,
     });
   };
 
@@ -131,8 +131,8 @@ const PasswordResetModal = ({ open, onClose, employee, onPasswordReset }: Passwo
         <div className="space-y-4">
           {/* Employee Info */}
           <div className="p-3 bg-muted/50 rounded-lg">
-            <p className="font-medium">{employee.name}</p>
-            <p className="text-sm text-muted-foreground">ID: {employee.employeeId}</p>
+            <p className="font-medium">{employee.full_name}</p>
+            <p className="text-sm text-muted-foreground">ID: {employee.employee_id}</p>
             <p className="text-sm text-muted-foreground">Team: {employee.team}</p>
           </div>
 

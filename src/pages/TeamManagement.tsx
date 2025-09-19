@@ -13,17 +13,18 @@ import { ArrowLeft, Plus, Search, Edit, Trash2, Users, Upload, Download, Save, X
 import { useToast } from "@/hooks/use-toast";
 import BulkUpload from "@/components/BulkUpload";
 import PasswordResetModal from "@/components/PasswordResetModal";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Employee {
   id: string;
-  employeeId: string;
-  name: string;
-  role: "team-member" | "sme" | "admin";
+  employee_id: string;
+  full_name: string;
+  role: string;
   team: string;
-  status: "active" | "inactive";
-  joinDate: string;
-  lastActive: string;
-  password?: string;
+  is_active: boolean;
+  join_date: string;
+  last_active: string;
+  password_hash: string;
 }
 
 const TeamManagement = () => {
@@ -34,14 +35,14 @@ const TeamManagement = () => {
   const [filterTeam, setFilterTeam] = useState("all");
   const [isAddingEmployee, setIsAddingEmployee] = useState(false);
   const [newEmployee, setNewEmployee] = useState<{
-    employeeId: string;
-    name: string;
-    role: "team-member" | "sme" | "admin";
+    employee_id: string;
+    full_name: string;
+    role: string;
     team: string;
     password: string;
   }>({
-    employeeId: "",
-    name: "",
+    employee_id: "",
+    full_name: "",
     role: "team-member",
     team: "",
     password: ""
@@ -61,80 +62,49 @@ const TeamManagement = () => {
       return;
     }
     setUserRole(role);
-    
-    // Load sample employees
-    const sampleEmployees: Employee[] = [
-      {
-        id: "1",
-        employeeId: "EMP001",
-        name: "John Smith",
-        role: "team-member",
-        team: "Support",
-        status: "active",
-        joinDate: "2024-01-15",
-        lastActive: "2024-01-20",
-        password: "TempPass123!"
-      },
-      {
-        id: "2",
-        employeeId: "EMP002", 
-        name: "Sarah Johnson",
-        role: "sme",
-        team: "CI",
-        status: "active",
-        joinDate: "2023-12-10",
-        lastActive: "2024-01-19",
-        password: "SecurePass456@"
-      },
-      {
-        id: "3",
-        employeeId: "EMP003",
-        name: "Mike Wilson",
-        role: "admin",
-        team: "Migration",
-        status: "active",
-        joinDate: "2023-11-01",
-        lastActive: "2024-01-20",
-        password: "AdminPass789#"
-      },
-      {
-        id: "4",
-        employeeId: "EMP004",
-        name: "Lisa Chen",
-        role: "team-member",
-        team: "Config", 
-        status: "inactive",
-        joinDate: "2024-01-05",
-        lastActive: "2024-01-18",
-        password: "ConfigPass321$"
-      },
-      {
-        id: "5",
-        employeeId: "EMP005",
-        name: "David Brown",
-        role: "sme",
-        team: "Exxat One",
-        status: "active",
-        joinDate: "2024-01-12",
-        lastActive: "2024-01-20",
-        password: "ExxatPass654%"
-      }
-    ];
-    setEmployees(sampleEmployees);
+    loadEmployees();
   }, [navigate]);
+
+  const loadEmployees = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error loading employees:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load employees",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setEmployees(data || []);
+    } catch (error) {
+      console.error('Error loading employees:', error);
+      toast({
+        title: "Error", 
+        description: "Failed to load employees",
+        variant: "destructive"
+      });
+    }
+  };
 
   const teams = ["Support", "CI", "Migration", "Config", "Exxat One"];
 
   const filteredEmployees = employees.filter(employee => {
-    const matchesSearch = employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         employee.employeeId.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = employee.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         employee.employee_id.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = filterRole === "all" || employee.role === filterRole;
     const matchesTeam = filterTeam === "all" || employee.team === filterTeam;
     return matchesSearch && matchesRole && matchesTeam;
   });
 
-  const handleAddEmployee = () => {
-    if (!newEmployee.employeeId || !newEmployee.name || !newEmployee.team || !newEmployee.password) {
+  const handleAddEmployee = async () => {
+    if (!newEmployee.employee_id || !newEmployee.full_name || !newEmployee.team || !newEmployee.password) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -144,7 +114,7 @@ const TeamManagement = () => {
     }
 
     // Check for duplicate employee ID
-    if (employees.some(emp => emp.employeeId === newEmployee.employeeId)) {
+    if (employees.some(emp => emp.employee_id === newEmployee.employee_id)) {
       toast({
         title: "Error", 
         description: "Employee ID already exists",
@@ -153,45 +123,124 @@ const TeamManagement = () => {
       return;
     }
 
-    const employee: Employee = {
-      id: Date.now().toString(),
-      ...newEmployee,
-      status: "active",
-      joinDate: new Date().toISOString().split('T')[0],
-      lastActive: new Date().toISOString().split('T')[0]
-    };
+    try {
+      const { data, error } = await supabase
+        .from('employees')
+        .insert([{
+          employee_id: newEmployee.employee_id,
+          full_name: newEmployee.full_name,
+          role: newEmployee.role,
+          team: newEmployee.team,
+          password_hash: newEmployee.password,
+          is_active: true,
+          join_date: new Date().toISOString().split('T')[0],
+          last_active: new Date().toISOString().split('T')[0]
+        }])
+        .select()
+        .single();
 
-    setEmployees(prev => [...prev, employee]);
-    setNewEmployee({
-      employeeId: "",
-      name: "",
-      role: "team-member",
-      team: "",
-      password: ""
-    });
-    setIsAddingEmployee(false);
-    
-    toast({
-      title: "Success",
-      description: "Employee added successfully"
-    });
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to add employee",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setEmployees(prev => [...prev, data]);
+      setNewEmployee({
+        employee_id: "",
+        full_name: "",
+        role: "team-member",
+        team: "",
+        password: ""
+      });
+      setIsAddingEmployee(false);
+      
+      toast({
+        title: "Success",
+        description: "Employee added successfully"
+      });
+    } catch (error) {
+      console.error('Error adding employee:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add employee",
+        variant: "destructive"
+      });
+    }
   };
 
-  const toggleEmployeeStatus = (employeeId: string) => {
-    setEmployees(prev => prev.map(employee => 
-      employee.id === employeeId 
-        ? { ...employee, status: employee.status === "active" ? "inactive" : "active" }
-        : employee
-    ));
+  const toggleEmployeeStatus = async (employeeId: string) => {
+    const employee = employees.find(emp => emp.id === employeeId);
+    if (!employee) return;
+
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .update({ is_active: !employee.is_active })
+        .eq('id', employeeId);
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to update employee status",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setEmployees(prev => prev.map(emp => 
+        emp.id === employeeId 
+          ? { ...emp, is_active: !emp.is_active }
+          : emp
+      ));
+
+      toast({
+        title: "Success",
+        description: "Employee status updated"
+      });
+    } catch (error) {
+      console.error('Error updating employee status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update employee status",
+        variant: "destructive"
+      });
+    }
   };
 
-  const deleteEmployee = (employeeId: string) => {
-    setEmployees(prev => prev.filter(employee => employee.id !== employeeId));
-    setSelectedEmployees(prev => prev.filter(id => id !== employeeId));
-    toast({
-      title: "Employee Removed",
-      description: "Employee has been removed successfully"
-    });
+  const deleteEmployee = async (employeeId: string) => {
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .delete()
+        .eq('id', employeeId);
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete employee",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setEmployees(prev => prev.filter(employee => employee.id !== employeeId));
+      setSelectedEmployees(prev => prev.filter(id => id !== employeeId));
+      toast({
+        title: "Employee Removed",
+        description: "Employee has been removed successfully"
+      });
+    } catch (error) {
+      console.error('Error deleting employee:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete employee",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleEditEmployee = (employee: Employee) => {
@@ -199,11 +248,11 @@ const TeamManagement = () => {
     setEditingData({ ...employee });
   };
 
-  const handleSaveEmployee = () => {
+  const handleSaveEmployee = async () => {
     if (!editingEmployee || !editingData) return;
 
     // Validation
-    if (!editingData.name || !editingData.team) {
+    if (!editingData.full_name || !editingData.team) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -213,8 +262,8 @@ const TeamManagement = () => {
     }
 
     // Check for duplicate employee ID if changed
-    if (editingData.employeeId && 
-        employees.some(emp => emp.id !== editingEmployee && emp.employeeId === editingData.employeeId)) {
+    if (editingData.employee_id && 
+        employees.some(emp => emp.id !== editingEmployee && emp.employee_id === editingData.employee_id)) {
       toast({
         title: "Error",
         description: "Employee ID already exists",
@@ -223,18 +272,41 @@ const TeamManagement = () => {
       return;
     }
 
-    setEmployees(prev => prev.map(employee => 
-      employee.id === editingEmployee 
-        ? { ...employee, ...editingData }
-        : employee
-    ));
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .update(editingData)
+        .eq('id', editingEmployee);
 
-    setEditingEmployee(null);
-    setEditingData({});
-    toast({
-      title: "Success",
-      description: "Employee updated successfully"
-    });
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to update employee",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setEmployees(prev => prev.map(employee => 
+        employee.id === editingEmployee 
+          ? { ...employee, ...editingData }
+          : employee
+      ));
+
+      setEditingEmployee(null);
+      setEditingData({});
+      toast({
+        title: "Success",
+        description: "Employee updated successfully"
+      });
+    } catch (error) {
+      console.error('Error updating employee:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update employee",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleCancelEdit = () => {
@@ -258,13 +330,36 @@ const TeamManagement = () => {
     }
   };
 
-  const handleBulkDelete = () => {
-    setEmployees(prev => prev.filter(employee => !selectedEmployees.includes(employee.id)));
-    setSelectedEmployees([]);
-    toast({
-      title: "Employees Removed",
-      description: `${selectedEmployees.length} employees have been removed successfully`
-    });
+  const handleBulkDelete = async () => {
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .delete()
+        .in('id', selectedEmployees);
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete employees",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setEmployees(prev => prev.filter(employee => !selectedEmployees.includes(employee.id)));
+      setSelectedEmployees([]);
+      toast({
+        title: "Employees Removed",
+        description: `${selectedEmployees.length} employees have been removed successfully`
+      });
+    } catch (error) {
+      console.error('Error deleting employees:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete employees",
+        variant: "destructive"
+      });
+    }
   };
 
   const [showBulkUpload, setShowBulkUpload] = useState(false);
@@ -273,39 +368,55 @@ const TeamManagement = () => {
     const successful: Employee[] = [];
     const errors: any[] = [];
 
-    data.forEach((row, index) => {
-      try {
-        const employee: Employee = {
-          id: Date.now().toString() + index,
-          employeeId: row["Employee ID"] || "",
-          name: row["Name"] || "",
-          role: (row["Role"] as "team-member" | "sme" | "admin") || "team-member",
-          team: row["Team"] || "",
-          password: row["Password"] || "",
-          status: "active",
-          joinDate: new Date().toISOString().split('T')[0],
-          lastActive: new Date().toISOString().split('T')[0]
-        };
-        successful.push(employee);
-      } catch (error) {
-        errors.push({ row: index + 1, error: "Invalid data format" });
-      }
-    });
+    try {
+      const employeesToInsert = data.map((row, index) => ({
+        employee_id: row["Employee ID"] || "",
+        full_name: row["Name"] || "",
+        role: row["Role"] || "team-member",
+        team: row["Team"] || "",
+        password_hash: row["Password"] || "",
+        is_active: true,
+        join_date: new Date().toISOString().split('T')[0],
+        last_active: new Date().toISOString().split('T')[0]
+      }));
 
-    setEmployees(prev => [...prev, ...successful]);
-    
-    return {
-      successful: successful.length,
-      failed: errors.length,
-      errors
-    };
+      const { data: insertedEmployees, error } = await supabase
+        .from('employees')
+        .insert(employeesToInsert)
+        .select();
+
+      if (error) {
+        console.error('Bulk upload error:', error);
+        return {
+          successful: 0,
+          failed: data.length,
+          errors: [{ row: 1, error: error.message }]
+        };
+      }
+
+      // Refresh the employees list
+      await loadEmployees();
+      
+      return {
+        successful: insertedEmployees?.length || 0,
+        failed: 0,
+        errors: []
+      };
+    } catch (error) {
+      console.error('Bulk upload error:', error);
+      return {
+        successful: 0,
+        failed: data.length,
+        errors: [{ row: 1, error: "Database error occurred" }]
+      };
+    }
   };
 
   const handleExportData = () => {
     const csvContent = [
       ["Employee ID", "Name", "Role", "Team", "Status", "Join Date", "Last Active"],
       ...employees.map(emp => [
-        emp.employeeId, emp.name, emp.role, emp.team, emp.status, emp.joinDate, emp.lastActive
+        emp.employee_id, emp.full_name, emp.role, emp.team, emp.is_active ? "active" : "inactive", emp.join_date, emp.last_active
       ])
     ].map(row => row.join(",")).join("\n");
 
@@ -340,12 +451,40 @@ const TeamManagement = () => {
     return roleMap[role as keyof typeof roleMap] || role;
   };
 
-  const handlePasswordReset = (employeeId: string, newPassword: string) => {
-    setEmployees(prev => prev.map(emp => 
-      emp.id === employeeId 
-        ? { ...emp, password: newPassword }
-        : emp
-    ));
+  const handlePasswordReset = async (employeeId: string, newPassword: string) => {
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .update({ password_hash: newPassword })
+        .eq('id', employeeId);
+
+      if (error) {
+        toast({
+          title: "Error",
+          description: "Failed to update password",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setEmployees(prev => prev.map(emp => 
+        emp.id === employeeId 
+          ? { ...emp, password_hash: newPassword }
+          : emp
+      ));
+
+      toast({
+        title: "Success",
+        description: "Password updated successfully"
+      });
+    } catch (error) {
+      console.error('Error updating password:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update password",
+        variant: "destructive"
+      });
+    }
   };
 
   const openPasswordModal = (employee: Employee) => {
@@ -355,7 +494,7 @@ const TeamManagement = () => {
 
   const bulkUploadValidation = {
     "Employee ID": (value: string) => 
-      employees.some(emp => emp.employeeId === value) ? "Employee ID already exists" : null,
+      employees.some(emp => emp.employee_id === value) ? "Employee ID already exists" : null,
     "Role": (value: string) => !["team-member", "sme", "admin"].includes(value) ? "Role must be team-member, sme, or admin" : null,
     "Team": (value: string) => !teams.includes(value) ? `Team must be one of: ${teams.join(", ")}` : null,
     "Password": (value: string) => {
@@ -466,7 +605,7 @@ const TeamManagement = () => {
           </Card>
           <Card className="shadow-soft border-border">
             <CardContent className="p-6">
-              <div className="text-2xl font-bold text-success">{employees.filter(e => e.status === "active").length}</div>
+              <div className="text-2xl font-bold text-success">{employees.filter(e => e.is_active).length}</div>
               <div className="text-sm text-foreground-muted">Active</div>
             </CardContent>
           </Card>
@@ -534,8 +673,8 @@ const TeamManagement = () => {
                   <Label htmlFor="employeeId">Employee ID *</Label>
                   <Input
                     id="employeeId"
-                    value={newEmployee.employeeId}
-                    onChange={(e) => setNewEmployee(prev => ({ ...prev, employeeId: e.target.value }))}
+                    value={newEmployee.employee_id}
+                    onChange={(e) => setNewEmployee(prev => ({ ...prev, employee_id: e.target.value }))}
                     placeholder="EMP001"
                     className="bg-surface border-border"
                   />
@@ -544,8 +683,8 @@ const TeamManagement = () => {
                   <Label htmlFor="name">Full Name *</Label>
                   <Input
                     id="name"
-                    value={newEmployee.name}
-                    onChange={(e) => setNewEmployee(prev => ({ ...prev, name: e.target.value }))}
+                    value={newEmployee.full_name}
+                    onChange={(e) => setNewEmployee(prev => ({ ...prev, full_name: e.target.value }))}
                     placeholder="John Doe"
                     className="bg-surface border-border"
                   />
@@ -642,23 +781,23 @@ const TeamManagement = () => {
                   <TableCell className="font-medium">
                     {editingEmployee === employee.id ? (
                       <Input
-                        value={editingData.employeeId || ""}
-                        onChange={(e) => setEditingData(prev => ({ ...prev, employeeId: e.target.value }))}
+                        value={editingData.employee_id || ""}
+                        onChange={(e) => setEditingData(prev => ({ ...prev, employee_id: e.target.value }))}
                         className="w-24"
                       />
                     ) : (
-                      employee.employeeId
+                      employee.employee_id
                     )}
                   </TableCell>
                    <TableCell>
                      {editingEmployee === employee.id ? (
-                       <Input
-                         value={editingData.name || ""}
-                         onChange={(e) => setEditingData(prev => ({ ...prev, name: e.target.value }))}
-                         className="w-32"
-                       />
+                        <Input
+                          value={editingData.full_name || ""}
+                          onChange={(e) => setEditingData(prev => ({ ...prev, full_name: e.target.value }))}
+                          className="w-32"
+                        />
                      ) : (
-                       employee.name
+                       employee.full_name
                      )}
                    </TableCell>
                   <TableCell>
@@ -702,12 +841,12 @@ const TeamManagement = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={employee.status === "active" ? "default" : "secondary"}>
-                      {employee.status}
+                    <Badge variant={employee.is_active ? "default" : "secondary"}>
+                      {employee.is_active ? "active" : "inactive"}
                     </Badge>
                   </TableCell>
-                  <TableCell>{employee.joinDate}</TableCell>
-                  <TableCell>{employee.lastActive}</TableCell>
+                  <TableCell>{employee.join_date}</TableCell>
+                  <TableCell>{employee.last_active}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       {editingEmployee === employee.id ? (
@@ -756,7 +895,7 @@ const TeamManagement = () => {
                             className="w-8 h-8"
                             title="Toggle Status"
                           >
-                            {employee.status === "active" ? (
+                            {employee.is_active ? (
                               <ToggleRight className="w-4 h-4 text-success" />
                             ) : (
                               <ToggleLeft className="w-4 h-4 text-muted-foreground" />
