@@ -13,6 +13,7 @@ import { GlobalDateFilter } from "@/components/GlobalDateFilter";
 import { FilterStatusPill } from "@/components/FilterStatusPill";
 import { getFilterCacheKey } from "@/utils/dateHelpers";
 import { formatHours, formatMinutes } from "@/utils/formatUtils";
+import { supabase } from "@/integrations/supabase/client";
 
 const ReportsContent = () => {
   const [userRole, setUserRole] = useState<string>("");
@@ -31,50 +32,10 @@ const ReportsContent = () => {
   const { toast } = useToast();
   const { globalDateFilter, lastUpdated } = useDashboard();
 
-  // Sample data for reports with team structure
-  const teamsData = {
-    "all": {
-      name: "All Teams",
-      employees: [
-        { id: "EMP001", name: "John Smith", team: "support-alpha" },
-        { id: "EMP002", name: "Sarah Johnson", team: "support-alpha" },
-        { id: "EMP003", name: "Mike Wilson", team: "support-beta" },
-        { id: "EMP004", name: "Lisa Chen", team: "support-beta" },
-        { id: "EMP005", name: "David Brown", team: "development" },
-        { id: "EMP006", name: "Emily Davis", team: "development" },
-        { id: "EMP007", name: "Alex White", team: "qa" },
-        { id: "EMP008", name: "Jessica Green", team: "qa" }
-      ]
-    },
-    "support-alpha": {
-      name: "Support Team Alpha",
-      employees: [
-        { id: "EMP001", name: "John Smith", team: "support-alpha" },
-        { id: "EMP002", name: "Sarah Johnson", team: "support-alpha" }
-      ]
-    },
-    "support-beta": {
-      name: "Support Team Beta", 
-      employees: [
-        { id: "EMP003", name: "Mike Wilson", team: "support-beta" },
-        { id: "EMP004", name: "Lisa Chen", team: "support-beta" }
-      ]
-    },
-    "development": {
-      name: "Development Team",
-      employees: [
-        { id: "EMP005", name: "David Brown", team: "development" },
-        { id: "EMP006", name: "Emily Davis", team: "development" }
-      ]
-    },
-    "qa": {
-      name: "QA Team",
-      employees: [
-        { id: "EMP007", name: "Alex White", team: "qa" },
-        { id: "EMP008", name: "Jessica Green", team: "qa" }
-      ]
-    }
-  };
+  // State for teams and employees from database
+  const [teams, setTeams] = useState<Array<{ id: string; name: string }>>([]);
+  const [employees, setEmployees] = useState<Array<{ id: string; name: string; team?: string }>>([]);
+  const [loadingTeamsEmployees, setLoadingTeamsEmployees] = useState(true);
 
   // Get actual report data from Supabase using global date filter
   const getActualReportData = async () => {
@@ -83,6 +44,52 @@ const ReportsContent = () => {
 
   const [reportData, setReportData] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Load teams and employees from database
+  useEffect(() => {
+    const loadTeamsAndEmployees = async () => {
+      setLoadingTeamsEmployees(true);
+      try {
+        const { data: employeesData, error } = await supabase
+          .from('employees')
+          .select('id, employee_id, full_name, team')
+          .eq('is_active', true)
+          .order('full_name');
+
+        if (error) {
+          console.error('Error loading employees:', error);
+          return;
+        }
+
+        // Process employees
+        const processedEmployees = (employeesData || []).map(emp => ({
+          id: emp.employee_id,
+          name: emp.full_name || emp.employee_id,
+          team: emp.team
+        }));
+
+        setEmployees(processedEmployees);
+
+        // Extract unique teams
+        const uniqueTeams = Array.from(new Set(
+          processedEmployees
+            .map(emp => emp.team)
+            .filter(team => team && team.trim() !== '')
+        )).map(team => ({
+          id: team!,
+          name: team!
+        }));
+
+        setTeams(uniqueTeams);
+      } catch (error) {
+        console.error('Error loading teams and employees:', error);
+      } finally {
+        setLoadingTeamsEmployees(false);
+      }
+    };
+
+    loadTeamsAndEmployees();
+  }, [lastUpdated]); // Reload when data is refreshed
 
   // Load report data when filter changes
   useEffect(() => {
@@ -108,8 +115,10 @@ const ReportsContent = () => {
 
   // Get filtered employees based on selected team
   const getFilteredEmployees = () => {
-    const teamData = teamsData[selectedTeam as keyof typeof teamsData];
-    return teamData ? teamData.employees : [];
+    if (selectedTeam === "all") {
+      return employees;
+    }
+    return employees.filter(emp => emp.team === selectedTeam);
   };
 
   // Get filtered report data based on selections using actual data
@@ -229,22 +238,23 @@ const ReportsContent = () => {
                 <Select value={selectedTeam} onValueChange={(value) => {
                   setSelectedTeam(value);
                   setSelectedEmployee("all"); // Reset employee when team changes
-                }}>
+                }} disabled={loadingTeamsEmployees}>
                   <SelectTrigger className="bg-surface border-border">
-                    <SelectValue />
+                    <SelectValue placeholder={loadingTeamsEmployees ? "Loading teams..." : "Select team"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(teamsData).map(([key, team]) => (
-                      <SelectItem key={key} value={key}>{team.name}</SelectItem>
+                    <SelectItem value="all">All Teams</SelectItem>
+                    {teams.map(team => (
+                      <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div>
                 <Label htmlFor="employee">Employee</Label>
-                <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+                <Select value={selectedEmployee} onValueChange={setSelectedEmployee} disabled={loadingTeamsEmployees}>
                   <SelectTrigger className="bg-surface border-border">
-                    <SelectValue />
+                    <SelectValue placeholder={loadingTeamsEmployees ? "Loading employees..." : "Select employee"} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Employees</SelectItem>
@@ -506,7 +516,7 @@ const ReportsContent = () => {
             <Card className="p-4 bg-surface border-border">
               <div className="text-2xl font-bold text-primary">{getFilteredReportData().length}</div>
               <div className="text-sm text-foreground-muted">
-                {selectedTeam === "all" ? "Total Employees" : `${teamsData[selectedTeam as keyof typeof teamsData]?.name} Members`}
+                {selectedTeam === "all" ? "Total Employees" : `${teams.find(t => t.id === selectedTeam)?.name || selectedTeam} Members`}
               </div>
             </Card>
           </div>
