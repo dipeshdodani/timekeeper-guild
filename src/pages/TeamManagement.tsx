@@ -368,48 +368,128 @@ const TeamManagement = () => {
     const successful: Employee[] = [];
     const errors: any[] = [];
 
-    try {
-      const employeesToInsert = data.map((row, index) => ({
-        employee_id: row["Employee ID"] || "",
-        full_name: row["Name"] || "",
-        role: row["Role"] || "team-member",
-        team: row["Team"] || "",
-        password_hash: row["Password"] || "",
-        is_active: true,
-        join_date: new Date().toISOString().split('T')[0],
-        last_active: new Date().toISOString().split('T')[0]
-      }));
+    // Process each row individually to handle validation and insertion errors properly
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const rowNumber = i + 1;
 
-      const { data: insertedEmployees, error } = await supabase
-        .from('employees')
-        .insert(employeesToInsert)
-        .select();
+      try {
+        // Validate required fields
+        if (!row["Employee ID"]?.trim()) {
+          errors.push({
+            row: rowNumber,
+            field: "Employee ID",
+            value: row["Employee ID"] || "",
+            error: "Employee ID is required"
+          });
+          continue;
+        }
 
-      if (error) {
-        console.error('Bulk upload error:', error);
-        return {
-          successful: 0,
-          failed: data.length,
-          errors: [{ row: 1, error: error.message }]
+        if (!row["Name"]?.trim()) {
+          errors.push({
+            row: rowNumber,
+            field: "Name",
+            value: row["Name"] || "",
+            error: "Name is required"
+          });
+          continue;
+        }
+
+        if (!row["Team"]?.trim()) {
+          errors.push({
+            row: rowNumber,
+            field: "Team",
+            value: row["Team"] || "",
+            error: "Team is required"
+          });
+          continue;
+        }
+
+        if (!row["Password"]?.trim()) {
+          errors.push({
+            row: rowNumber,
+            field: "Password",
+            value: "",
+            error: "Password is required"
+          });
+          continue;
+        }
+
+        // Check for duplicate employee ID in existing data
+        const existingEmployee = employees.find(emp => emp.employee_id === row["Employee ID"]);
+        if (existingEmployee) {
+          errors.push({
+            row: rowNumber,
+            field: "Employee ID",
+            value: row["Employee ID"],
+            error: "Employee ID already exists"
+          });
+          continue;
+        }
+
+        // Check for duplicate employee ID in current batch
+        const duplicateInBatch = successful.find(emp => emp.employee_id === row["Employee ID"]);
+        if (duplicateInBatch) {
+          errors.push({
+            row: rowNumber,
+            field: "Employee ID", 
+            value: row["Employee ID"],
+            error: "Duplicate Employee ID in this upload"
+          });
+          continue;
+        }
+
+        const employeeToInsert = {
+          employee_id: row["Employee ID"].trim(),
+          full_name: row["Name"].trim(),
+          role: row["Role"]?.trim() || "team-member",
+          team: row["Team"].trim(),
+          password_hash: row["Password"].trim(),
+          email: row["Email"]?.trim() || null,
+          is_active: true,
+          join_date: new Date().toISOString().split('T')[0],
+          last_active: new Date().toISOString().split('T')[0]
         };
-      }
 
-      // Refresh the employees list
-      await loadEmployees();
-      
-      return {
-        successful: insertedEmployees?.length || 0,
-        failed: 0,
-        errors: []
-      };
-    } catch (error) {
-      console.error('Bulk upload error:', error);
-      return {
-        successful: 0,
-        failed: data.length,
-        errors: [{ row: 1, error: "Database error occurred" }]
-      };
+        const { data: insertedEmployee, error } = await supabase
+          .from('employees')
+          .insert([employeeToInsert])
+          .select()
+          .single();
+
+        if (error) {
+          console.error(`Error inserting row ${rowNumber}:`, error);
+          errors.push({
+            row: rowNumber,
+            field: "Database",
+            value: row["Employee ID"],
+            error: error.message || "Failed to insert employee"
+          });
+          continue;
+        }
+
+        if (insertedEmployee) {
+          successful.push(insertedEmployee);
+        }
+      } catch (error) {
+        console.error(`Unexpected error processing row ${rowNumber}:`, error);
+        errors.push({
+          row: rowNumber,
+          field: "System",
+          value: row["Employee ID"] || "",
+          error: "Unexpected error occurred"
+        });
+      }
     }
+
+    // Refresh the employees list to show newly uploaded members
+    await loadEmployees();
+    
+    return {
+      successful: successful.length,
+      failed: errors.length,
+      errors: errors
+    };
   };
 
   const handleExportData = () => {
