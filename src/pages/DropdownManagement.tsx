@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { 
   ArrowLeft, 
   Database, 
@@ -15,7 +16,8 @@ import {
   Plus,
   Upload,
   Download,
-  Trash2
+  Trash2,
+  X
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DropdownBulkUpload } from "@/components/DropdownBulkUpload";
@@ -45,6 +47,7 @@ const DropdownManagement = () => {
     type: DropdownType | null;
     title: string;
   }>({ type: null, title: "" });
+  const [newItemName, setNewItemName] = useState<string>("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -158,6 +161,70 @@ const DropdownManagement = () => {
     });
   };
 
+  const addItem = (type: DropdownType) => {
+    const trimmedName = newItemName.trim();
+    
+    if (!trimmedName) {
+      toast({
+        title: "Error",
+        description: "Please enter a name",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    switch (type) {
+      case 'universities':
+        const existingUniversity = dropdownData.universities.find(u => u.name === trimmedName);
+        if (existingUniversity) {
+          toast({
+            title: "Error",
+            description: "This university already exists",
+            variant: "destructive"
+          });
+          return;
+        }
+        updateUniversities([...dropdownData.universities, { name: trimmedName }]);
+        break;
+      case 'domains':
+        const existingDomain = dropdownData.domains.find(d => d.name === trimmedName);
+        if (existingDomain) {
+          toast({
+            title: "Error",
+            description: "This domain already exists",
+            variant: "destructive"
+          });
+          return;
+        }
+        updateDomains([...dropdownData.domains, { name: trimmedName }]);
+        break;
+    }
+
+    setNewItemName("");
+    loadDropdownData();
+    toast({
+      title: "Added Successfully",
+      description: `${trimmedName} has been added to ${type}`
+    });
+  };
+
+  const removeItem = (type: DropdownType, itemName: string) => {
+    switch (type) {
+      case 'universities':
+        updateUniversities(dropdownData.universities.filter(u => u.name !== itemName));
+        break;
+      case 'domains':
+        updateDomains(dropdownData.domains.filter(d => d.name !== itemName));
+        break;
+    }
+
+    loadDropdownData();
+    toast({
+      title: "Removed Successfully",
+      description: `${itemName} has been removed`
+    });
+  };
+
   const dropdownSections = [
     {
       id: 'universities' as DropdownType,
@@ -245,6 +312,28 @@ const DropdownManagement = () => {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  {/* Add Item Form */}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={`Enter ${section.title.slice(0, -1)} name`}
+                      value={newItemName}
+                      onChange={(e) => setNewItemName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          addItem(section.id);
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={() => addItem(section.id)}
+                      disabled={!newItemName.trim()}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add
+                    </Button>
+                  </div>
+
                   {/* Action Buttons */}
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -287,6 +376,7 @@ const DropdownManagement = () => {
                                   {column}
                                 </th>
                               ))}
+                              <th className="text-right p-3 font-medium w-20">Actions</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -298,6 +388,16 @@ const DropdownManagement = () => {
                                  {section.id === 'domains' && (
                                    <td className="p-3">{item.name}</td>
                                  )}
+                                 <td className="p-3 text-right">
+                                   <Button
+                                     variant="ghost"
+                                     size="icon"
+                                     onClick={() => removeItem(section.id, item.name)}
+                                     className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                   >
+                                     <X className="w-4 h-4" />
+                                   </Button>
+                                 </td>
                                </tr>
                              ))}
                           </tbody>
