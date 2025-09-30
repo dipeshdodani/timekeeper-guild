@@ -382,12 +382,7 @@ const DropdownManagement = () => {
                           <tbody>
                              {section.data.map((item: any, index) => (
                                <tr key={index} className="border-b border-border hover:bg-muted/50">
-                                 {section.id === 'universities' && (
-                                   <td className="p-3">{item.name}</td>
-                                 )}
-                                 {section.id === 'domains' && (
-                                   <td className="p-3">{item.name}</td>
-                                 )}
+                                 <td className="p-3">{item.name}</td>
                                  <td className="p-3 text-right">
                                    <Button
                                      variant="outline"
