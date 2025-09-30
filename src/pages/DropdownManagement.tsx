@@ -390,12 +390,13 @@ const DropdownManagement = () => {
                                  )}
                                  <td className="p-3 text-right">
                                    <Button
-                                     variant="ghost"
-                                     size="icon"
+                                     variant="outline"
+                                     size="sm"
                                      onClick={() => removeItem(section.id, item.name)}
-                                     className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                     className="h-8 text-destructive border-destructive/30 hover:bg-destructive hover:text-destructive-foreground"
                                    >
-                                     <X className="w-4 h-4" />
+                                     <X className="w-4 h-4 mr-1" />
+                                     Remove
                                    </Button>
                                  </td>
                                </tr>
