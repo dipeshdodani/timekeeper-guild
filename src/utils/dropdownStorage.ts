@@ -40,16 +40,16 @@ const DEFAULT_DROPDOWN_DATA: DropdownData = {
 export const getDropdownData = (): DropdownData => {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
+    if (stored !== null) {
       return JSON.parse(stored);
     }
+    // Only set default data on first load (when null, not when empty)
+    setDropdownData(DEFAULT_DROPDOWN_DATA);
+    return DEFAULT_DROPDOWN_DATA;
   } catch (error) {
     console.error("Error reading dropdown data from localStorage:", error);
+    return DEFAULT_DROPDOWN_DATA;
   }
-  
-  // Initialize with default data if not found
-  setDropdownData(DEFAULT_DROPDOWN_DATA);
-  return DEFAULT_DROPDOWN_DATA;
 };
 
 export const setDropdownData = (data: DropdownData): void => {
