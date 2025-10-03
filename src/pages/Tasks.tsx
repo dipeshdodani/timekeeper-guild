@@ -68,7 +68,7 @@ const Tasks = () => {
     const TASKS_STORAGE_KEY = "taskManagementData";
     const savedTasks = localStorage.getItem(TASKS_STORAGE_KEY);
     
-    if (savedTasks) {
+    if (savedTasks !== null) {
       try {
         const parsedTasks = JSON.parse(savedTasks);
         setTasks(parsedTasks);
@@ -78,7 +78,7 @@ const Tasks = () => {
         loadSampleTasks();
       }
     } else {
-      // Load sample data only if no saved data exists
+      // Load sample data only on first load (when null, not when empty)
       loadSampleTasks();
     }
   }, [navigate]);
