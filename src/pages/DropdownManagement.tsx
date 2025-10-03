@@ -48,6 +48,7 @@ const DropdownManagement = () => {
     title: string;
   }>({ type: null, title: "" });
   const [newItemName, setNewItemName] = useState<string>("");
+  const [editingItem, setEditingItem] = useState<{ type: DropdownType | null; originalName: string; newName: string } | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -225,6 +226,65 @@ const DropdownManagement = () => {
     });
   };
 
+  const startEditing = (type: DropdownType, name: string) => {
+    setEditingItem({ type, originalName: name, newName: name });
+  };
+
+  const cancelEditing = () => {
+    setEditingItem(null);
+  };
+
+  const saveEdit = (type: DropdownType) => {
+    if (!editingItem || !editingItem.newName.trim()) {
+      toast({
+        title: "Error",
+        description: "Name cannot be empty",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const trimmedName = editingItem.newName.trim();
+
+    switch (type) {
+      case 'universities':
+        const existingUniv = dropdownData.universities.find(u => u.name === trimmedName && u.name !== editingItem.originalName);
+        if (existingUniv) {
+          toast({
+            title: "Error",
+            description: "This university already exists",
+            variant: "destructive"
+          });
+          return;
+        }
+        updateUniversities(dropdownData.universities.map(u => 
+          u.name === editingItem.originalName ? { name: trimmedName } : u
+        ));
+        break;
+      case 'domains':
+        const existingDom = dropdownData.domains.find(d => d.name === trimmedName && d.name !== editingItem.originalName);
+        if (existingDom) {
+          toast({
+            title: "Error",
+            description: "This domain already exists",
+            variant: "destructive"
+          });
+          return;
+        }
+        updateDomains(dropdownData.domains.map(d => 
+          d.name === editingItem.originalName ? { name: trimmedName } : d
+        ));
+        break;
+    }
+
+    loadDropdownData();
+    setEditingItem(null);
+    toast({
+      title: "Updated Successfully",
+      description: `${editingItem.originalName} has been updated to ${trimmedName}`
+    });
+  };
+
   const dropdownSections = [
     {
       id: 'universities' as DropdownType,
@@ -380,22 +440,73 @@ const DropdownManagement = () => {
                             </tr>
                           </thead>
                           <tbody>
-                             {section.data.map((item: any, index) => (
-                               <tr key={index} className="border-b border-border hover:bg-muted/50">
-                                 <td className="p-3">{item.name}</td>
-                                 <td className="p-3 text-right">
-                                   <Button
-                                     variant="outline"
-                                     size="sm"
-                                     onClick={() => removeItem(section.id, item.name)}
-                                     className="h-8 text-destructive border-destructive/30 hover:bg-destructive hover:text-destructive-foreground"
-                                   >
-                                     <X className="w-4 h-4 mr-1" />
-                                     Remove
-                                   </Button>
-                                 </td>
-                               </tr>
-                             ))}
+                             {section.data.map((item: any, index) => {
+                               const isEditing = editingItem?.type === section.id && editingItem?.originalName === item.name;
+                               return (
+                                 <tr key={index} className="border-b border-border hover:bg-muted/50">
+                                   <td className="p-3">
+                                     {isEditing ? (
+                                       <Input
+                                         value={editingItem.newName}
+                                         onChange={(e) => setEditingItem({ ...editingItem, newName: e.target.value })}
+                                         onKeyDown={(e) => {
+                                           if (e.key === 'Enter') saveEdit(section.id);
+                                           if (e.key === 'Escape') cancelEditing();
+                                         }}
+                                         className="h-8"
+                                         autoFocus
+                                       />
+                                     ) : (
+                                       item.name
+                                     )}
+                                   </td>
+                                   <td className="p-3 text-right">
+                                     <div className="flex gap-2 justify-end">
+                                       {isEditing ? (
+                                         <>
+                                           <Button
+                                             variant="outline"
+                                             size="sm"
+                                             onClick={() => saveEdit(section.id)}
+                                             className="h-8"
+                                           >
+                                             Save
+                                           </Button>
+                                           <Button
+                                             variant="outline"
+                                             size="sm"
+                                             onClick={cancelEditing}
+                                             className="h-8"
+                                           >
+                                             Cancel
+                                           </Button>
+                                         </>
+                                       ) : (
+                                         <>
+                                           <Button
+                                             variant="outline"
+                                             size="sm"
+                                             onClick={() => startEditing(section.id, item.name)}
+                                             className="h-8"
+                                           >
+                                             Edit
+                                           </Button>
+                                           <Button
+                                             variant="outline"
+                                             size="sm"
+                                             onClick={() => removeItem(section.id, item.name)}
+                                             className="h-8 text-destructive border-destructive/30 hover:bg-destructive hover:text-destructive-foreground"
+                                           >
+                                             <X className="w-4 h-4 mr-1" />
+                                             Remove
+                                           </Button>
+                                         </>
+                                       )}
+                                     </div>
+                                   </td>
+                                 </tr>
+                               );
+                             })}
                           </tbody>
                         </table>
                       </div>
